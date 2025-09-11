@@ -64,7 +64,38 @@ function CreateTournamentModal() {
 
 export function onMountTournaments() {
   const modal = document.getElementById('tournament-modal');
-  document.getElementById('new-tournament-btn')?.addEventListener('click', () => modal.showModal());
+  document.getElementById('new-tournament-btn')?.addEventListener('click', async () => {
+    // Check plan and tournaments count before allowing creation
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) { alert('Veuillez vous connecter.'); return; }
+    const uid = session.session.user.id;
+
+    // Read profile plan
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', uid)
+      .single();
+    if (profileErr) { console.warn(profileErr); modal.showModal(); return; }
+
+    // Count existing tournaments for this user
+    const { count } = await supabase
+      .from('tournaments')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner', uid);
+
+    if ((profile?.plan ?? 'free') === 'free' && (count ?? 0) >= 1) {
+      const goCheckout = confirm(
+        'Votre plan Free permet de créer 1 seul tournoi.\n\nPassez en Pro ou Club pour créer d\'autres tournois.\n\nAller à la page de paiement ?'
+      );
+      if (goCheckout) {
+        location.hash = '#/billing/checkout?plan=pro';
+      }
+      return;
+    }
+
+    modal.showModal();
+  });
 
   document.getElementById('create-tournament')?.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -91,16 +122,11 @@ export function onMountTournaments() {
       const msg = String(error.message || '').toLowerCase();
       const looksLikeRls = msg.includes('row-level security') || msg.includes('policy') || msg.includes('permission denied');
       if (looksLikeRls) {
-        const goPricing = confirm(
-          'Votre plan Free permet de créer 1 seul tournoi.\n\nPassez en Pro ou Club pour créer d\'autres tournois.\n\nVoulez-vous voir les plans ?'
+        const goCheckout = confirm(
+          'Votre plan Free permet de créer 1 seul tournoi.\n\nPassez en Pro ou Club pour créer d\'autres tournois.\n\nAller à la page de paiement ?'
         );
-        if (goPricing) {
-          // Aller vers la landing et faire défiler jusqu'à la section pricing
-          location.hash = '#/';
-          setTimeout(() => {
-            const el = document.getElementById('pricing');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }, 300);
+        if (goCheckout) {
+          location.hash = '#/billing/checkout?plan=pro';
         }
       } else {
         alert(error.message);

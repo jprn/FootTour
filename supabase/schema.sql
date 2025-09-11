@@ -153,7 +153,7 @@ begin
     new.id,
     nullif(new.raw_user_meta_data->>'full_name', ''),
     nullif(new.raw_user_meta_data->>'avatar_url', ''),
-    case when (new.raw_user_meta_data->>'plan') in ('free','pro','club') then new.raw_user_meta_data->>'plan' else 'free' end
+    'free'
   )
   on conflict (id) do nothing;
   return new;

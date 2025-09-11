@@ -6,6 +6,7 @@ import TournamentDashboardPage, { onMountTournamentDashboard } from './pages/tou
 import TeamsPage, { onMountTeams } from './pages/teams.js';
 import AuthLoginPage, { onMountAuthLogin } from './pages/auth_login.js';
 import AuthSignupPage, { onMountAuthSignup } from './pages/auth_signup.js';
+import BillingCheckoutPage, { onMountBillingCheckout } from './pages/billing_checkout.js';
 
 // Helper to register on-mount callbacks per page
 function onMount(fn) {
@@ -34,6 +35,10 @@ addRoute('/auth/login', async () => {
 addRoute('/auth/signup', async () => {
   onMount(() => onMountAuthSignup());
   return AuthSignupPage();
+});
+addRoute('/billing/checkout', async () => {
+  onMount(() => onMountBillingCheckout());
+  return BillingCheckoutPage();
 });
 
 // Auth UI and nav actions

@@ -41,7 +41,7 @@ export default function LandingPage() {
           <li>• Exports PDF/CSV</li>
           <li>• Branding FootTour retiré</li>
         </ul>
-        <a href="#/auth/signup" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl bg-primary text-white">Passer en Pro</a>
+        <a href="#/auth/signup?plan=pro" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl bg-primary text-white">Passer en Pro</a>
       </div>
 
       <!-- Club -->
@@ -54,7 +54,7 @@ export default function LandingPage() {
           <li>• Support prioritaire</li>
           <li>• Accès club staff</li>
         </ul>
-        <a href="#/auth/signup" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Contacter le support</a>
+        <a href="#/auth/signup?plan=club" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Contacter le support</a>
       </div>
     </div>
   </section>
