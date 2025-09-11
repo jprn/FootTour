@@ -5,6 +5,9 @@ export default function TournamentsPage() {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-semibold">Mes tournois</h1>
+        <div id="quota-banner" class="hidden mt-2 text-sm px-3 py-2 rounded-2xl border border-primary/30 bg-primary/5 text-primary">
+          Limite du plan Free atteinte. <a href="#/billing/checkout?plan=pro" class="underline font-medium">Passer en Pro</a> pour créer d'autres tournois.
+        </div>
         <div class="mt-1 text-sm text-gray-500 flex items-center gap-2">
           <span id="quota-indicator" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">—</span>
           <a id="upgrade-inline" href="#/billing/checkout?plan=pro" class="hidden text-primary underline">Passer en Pro</a>
@@ -91,12 +94,10 @@ export function onMountTournaments() {
       .eq('owner', uid);
 
     if ((profile?.plan ?? 'free') === 'free' && (count ?? 0) >= 1) {
-      const goCheckout = confirm(
-        'Votre plan Free permet de créer 1 seul tournoi.\n\nPassez en Pro ou Club pour créer d\'autres tournois.\n\nAller à la page de paiement ?'
-      );
-      if (goCheckout) {
-        location.hash = '#/billing/checkout?plan=pro';
-      }
+      // Show toast + reveal upgrade banner
+      try { window.showToast && window.showToast('Limite Free atteinte — passez en Pro pour créer plus de tournois.', { type: 'error' }); } catch {}
+      const banner = document.getElementById('quota-banner');
+      banner?.classList.remove('hidden');
       return;
     }
 
@@ -128,12 +129,10 @@ export function onMountTournaments() {
       const msg = String(error.message || '').toLowerCase();
       const looksLikeRls = msg.includes('row-level security') || msg.includes('policy') || msg.includes('permission denied');
       if (looksLikeRls) {
-        const goCheckout = confirm(
-          'Votre plan Free permet de créer 1 seul tournoi.\n\nPassez en Pro ou Club pour créer d\'autres tournois.\n\nAller à la page de paiement ?'
-        );
-        if (goCheckout) {
-          location.hash = '#/billing/checkout?plan=pro';
-        }
+        // toast + show banner
+        try { window.showToast && window.showToast('Limite Free atteinte — passez en Pro pour créer plus de tournois.', { type: 'error' }); } catch {}
+        const banner = document.getElementById('quota-banner');
+        banner?.classList.remove('hidden');
       } else {
         alert(error.message);
       }
