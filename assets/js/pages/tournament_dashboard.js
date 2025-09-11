@@ -7,8 +7,8 @@ export default function TournamentDashboardPage({ id }) {
         <a href="#/app/tournaments" class="text-sm text-gray-500">← Mes tournois</a>
         <h1 id="tt-name" class="text-2xl font-semibold mt-1">Tournoi</h1>
       </div>
-      <div class="flex gap-2">
-        <a href="#/app/t/${id}/schedule" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Planning</a>
+      <div class="flex gap-2" id="tt-actions">
+        <!-- Actions populated dynamically -->
         <a href="#/app/t/${id}/teams" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Équipes</a>
       </div>
     </div>
@@ -63,6 +63,28 @@ async function load(id) {
   const host = document.getElementById('tt-groups');
   if (!host) return;
   const { data: groups } = await supabase.from('groups').select('id, name').eq('tournament_id', id).order('name', { ascending: true });
+  const actions = document.getElementById('tt-actions');
+  if (t.format === 'groups_knockout') {
+    // If no groups, offer generation CTA; else show Planning CTA
+    if (!groups?.length) {
+      const btn = document.createElement('button');
+      btn.id = 'tt-generate-groups';
+      btn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      btn.textContent = 'Générer les poules';
+      btn.addEventListener('click', async () => {
+        await createRandomGroupsAndGenerate(id);
+        try { window.showToast && window.showToast('Poules + calendrier générés', { type: 'success' }); } catch {}
+        location.hash = `#/app/t/${id}/schedule`;
+      });
+      actions?.prepend(btn);
+    } else {
+      const link = document.createElement('a');
+      link.href = `#/app/t/${id}/schedule`;
+      link.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      link.textContent = 'Planning';
+      actions?.prepend(link);
+    }
+  }
   if (!groups?.length) {
     host.innerHTML = '';
     return;
@@ -86,4 +108,55 @@ async function load(id) {
       `).join('')}
     </div>
   `;
+}
+
+// Helpers reused from schedule.js logic
+function recommendGroups(totalTeams, maxGroups) {
+  const minGroups = 2;
+  const targetSize = 4.5;
+  let bestK = Math.min(Math.max(minGroups, Math.floor(totalTeams / targetSize)), maxGroups);
+  let bestScore = Infinity;
+  for (let k = minGroups; k <= maxGroups; k++) {
+    const size = totalTeams / k;
+    const balancePenalty = (totalTeams % k === 0) ? 0 : 0.3;
+    const sizePenalty = Math.abs(size - targetSize);
+    const score = sizePenalty + balancePenalty;
+    if (score < bestScore) { bestScore = score; bestK = k; }
+  }
+  return bestK;
+}
+
+async function createRandomGroupsAndGenerate(tournamentId) {
+  const { data: teams, error } = await supabase.from('teams').select('id, name').eq('tournament_id', tournamentId).order('created_at', { ascending: true });
+  if (error) { alert(error.message); return; }
+  if (!teams?.length) { alert('Aucune équipe dans le tournoi.'); return; }
+  const maxGroups = Math.min(8, teams.length);
+  const rec = recommendGroups(teams.length, maxGroups);
+  let n = parseInt(prompt(`Nombre de poules (2 à ${maxGroups}) ?\nRecommandé: ${rec} (≈ ${Math.ceil(teams.length/rec)} équipes/poule)`, String(rec)) || '0', 10);
+  if (!Number.isFinite(n) || n < 2 || n > maxGroups) { alert('Nombre de poules invalide.'); return; }
+  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const payload = Array.from({ length: n }).map((_, i) => ({ tournament_id: tournamentId, name: letters[i] }));
+  const { data: created, error: gErr } = await supabase.from('groups').insert(payload).select('id, name').order('name', { ascending: true });
+  if (gErr) { alert(gErr.message); return; }
+  for (let i = 0; i < shuffled.length; i++) {
+    const g = created[i % created.length];
+    const team = shuffled[i];
+    const { error: uErr } = await supabase.from('teams').update({ group_id: g.id }).eq('id', team.id);
+    if (uErr) { alert(uErr.message); return; }
+  }
+  // generate round robin
+  let toInsert = [];
+  for (const g of created) {
+    const { data: tms } = await supabase.from('teams').select('id').eq('group_id', g.id).order('created_at', { ascending: true });
+    for (let i = 0; i < (tms||[]).length; i++) {
+      for (let j = i + 1; j < (tms||[]).length; j++) {
+        toInsert.push({ tournament_id: tournamentId, group_id: g.id, round: `Poule ${g.name}`, home_team_id: tms[i].id, away_team_id: tms[j].id, status: 'scheduled' });
+      }
+    }
+  }
+  if (toInsert.length) {
+    const { error: mErr } = await supabase.from('matches').insert(toInsert);
+    if (mErr) { alert(mErr.message); return; }
+  }
 }
