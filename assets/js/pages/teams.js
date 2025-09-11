@@ -102,8 +102,8 @@ async function loadTeams(id, { highlightId } = {}) {
       ${t.logo_url ? `<img src="${t.logo_url}" class="w-10 h-10 rounded-xl object-cover" alt="logo" />` : `<div class=\"w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 grid place-items-center\">${t.name[0]}</div>`}
       <div class="font-medium flex-1">${t.name}</div>
       <div class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
-        <button title="Modifier" data-action="edit-team" data-id="${t.id}" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 text-xs">Modifier</button>
-        <button title="Supprimer" data-action="delete-team" data-id="${t.id}" class="px-2 py-1 rounded-xl border border-red-300 dark:border-red-400 text-red-600 text-xs">Supprimer</button>
+        <button title="Modifier" data-action="edit-team" data-id="${t.id}" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20 text-xs">✏️</button>
+        <button title="Supprimer" data-action="delete-team" data-id="${t.id}" class="w-8 h-8 grid place-items-center rounded-xl border border-red-300 dark:border-red-400 text-red-600 text-xs">🗑️</button>
       </div>
     </div>
   `).join('');

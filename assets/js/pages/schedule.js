@@ -1,0 +1,125 @@
+import { supabase } from '../supabaseClient.js';
+
+export default function SchedulePage({ id }) {
+  return `
+    <div class="flex items-center justify-between">
+      <div>
+        <a href="#/app/t/${id}" class="text-sm text-gray-500">← Tableau de bord</a>
+        <h1 class="text-2xl font-semibold mt-1">Planning</h1>
+      </div>
+      <div class="flex gap-2">
+        <button id="gen-groups" class="hidden px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer poules</button>
+        <button id="gen-knockout" class="hidden px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer bracket</button>
+      </div>
+    </div>
+
+    <section id="schedule-content" class="mt-6 space-y-6">
+      <div id="format-info" class="text-sm text-gray-500">Chargement du tournoi…</div>
+      <div id="matches-list" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+  `;
+}
+
+export function onMountSchedule({ id }) {
+  init(id);
+}
+
+async function init(id) {
+  const info = document.getElementById('format-info');
+  const btnGroups = document.getElementById('gen-groups');
+  const btnKO = document.getElementById('gen-knockout');
+
+  const { data: t, error } = await supabase.from('tournaments').select('*').eq('id', id).single();
+  if (error) { info.textContent = error.message; return; }
+  if (t.format === 'groups_knockout') {
+    info.textContent = 'Format: Poules + Phase finale';
+    btnGroups.classList.remove('hidden');
+    btnGroups.onclick = () => generateGroupRoundRobin(id);
+  } else {
+    info.textContent = 'Format: Élimination directe';
+    btnKO.classList.remove('hidden');
+    btnKO.onclick = () => generateKnockout(id);
+  }
+
+  await loadMatches(id);
+}
+
+async function loadMatches(id) {
+  const list = document.getElementById('matches-list');
+  list.innerHTML = '<div class="col-span-full text-sm opacity-70">Chargement…</div>';
+  const { data, error } = await supabase
+    .from('matches')
+    .select('id, round, start_time, status, home:home_team_id(name), away:away_team_id(name)')
+    .eq('tournament_id', id)
+    .order('start_time', { ascending: true });
+  if (error) { list.innerHTML = `<div class=\"text-red-600\">${error.message}</div>`; return; }
+  if (!data?.length) { list.innerHTML = '<div class="opacity-70">Aucun match pour le moment.</div>'; return; }
+
+  list.innerHTML = data.map(m => `
+    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+      <div class="text-sm text-gray-500">${m.round || 'Match'}</div>
+      <div class="font-medium mt-1">${m.home?.name || '—'} vs ${m.away?.name || '—'}</div>
+      <div class="text-sm text-gray-500">${m.start_time ? new Date(m.start_time).toLocaleString() : ''} ${m.status ? '· ' + m.status : ''}</div>
+    </div>
+  `).join('');
+}
+
+async function generateGroupRoundRobin(tournamentId) {
+  // Fetch groups and teams per group
+  const { data: groups, error: gErr } = await supabase.from('groups').select('id, name').eq('tournament_id', tournamentId).order('position', { ascending: true });
+  if (gErr) { alert(gErr.message); return; }
+  if (!groups?.length) { alert('Aucune poule. Créez d\'abord des poules et des équipes.'); return; }
+
+  let toInsert = [];
+  for (const g of groups) {
+    const { data: teams, error: tErr } = await supabase.from('teams').select('id, name').eq('group_id', g.id).order('created_at', { ascending: true });
+    if (tErr) { alert(tErr.message); return; }
+    // Round-robin simple: chaque paire une fois
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        toInsert.push({
+          tournament_id: tournamentId,
+          group_id: g.id,
+          round: `Poule ${g.name}`,
+          home_team_id: teams[i].id,
+          away_team_id: teams[j].id,
+          status: 'scheduled',
+        });
+      }
+    }
+  }
+  if (!toInsert.length) { alert('Pas assez d\'équipes dans les poules.'); return; }
+  const { error } = await supabase.from('matches').insert(toInsert);
+  if (error) { alert(error.message); return; }
+  try { window.showToast && window.showToast('Calendrier des poules généré', { type: 'success' }); } catch {}
+  loadMatches(tournamentId);
+}
+
+async function generateKnockout(tournamentId) {
+  // Fetch all teams of tournament
+  const { data: teams, error } = await supabase.from('teams').select('id, name').eq('tournament_id', tournamentId).order('created_at', { ascending: true });
+  if (error) { alert(error.message); return; }
+  const n = teams.length;
+  if (n < 2) { alert('Pas assez d\'équipes pour générer un bracket.'); return; }
+  // Determine nearest power of 2 and create first round pairings
+  const pow2 = 1 << Math.floor(Math.log2(n));
+  const firstRound = [];
+  for (let i = 0; i < pow2; i += 2) {
+    const a = teams[i];
+    const b = teams[i + 1];
+    if (a && b) {
+      firstRound.push({
+        tournament_id: tournamentId,
+        round: '1/8 ou 1er tour',
+        home_team_id: a.id,
+        away_team_id: b.id,
+        status: 'scheduled',
+      });
+    }
+  }
+  if (!firstRound.length) { alert('Impossible de générer le bracket.'); return; }
+  const { error: insErr } = await supabase.from('matches').insert(firstRound);
+  if (insErr) { alert(insErr.message); return; }
+  try { window.showToast && window.showToast('Bracket généré', { type: 'success' }); } catch {}
+  loadMatches(tournamentId);
+}

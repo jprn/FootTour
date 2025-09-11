@@ -11,6 +11,7 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default now()
 );
 
+
 create table if not exists public.tournaments (
   id uuid primary key default gen_random_uuid(),
   owner uuid not null references auth.users(id) on delete cascade default auth.uid(),
@@ -48,11 +49,30 @@ create index if not exists idx_tournaments_owner on public.tournaments(owner);
 create index if not exists idx_groups_tournament on public.groups(tournament_id);
 create index if not exists idx_teams_tournament on public.teams(tournament_id);
 
+-- Matches table
+create table if not exists public.matches (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments(id) on delete cascade,
+  group_id uuid references public.groups(id) on delete set null,
+  round text,
+  home_team_id uuid references public.teams(id) on delete set null,
+  away_team_id uuid references public.teams(id) on delete set null,
+  start_time timestamp with time zone,
+  status text default 'scheduled', -- scheduled | live | finished
+  home_score int default 0,
+  away_score int default 0,
+  created_at timestamp with time zone default now()
+);
+
+create index if not exists idx_matches_tournament on public.matches(tournament_id);
+create index if not exists idx_matches_group on public.matches(group_id);
+
 -- RLS
 alter table public.profiles enable row level security;
 alter table public.tournaments enable row level security;
 alter table public.groups enable row level security;
 alter table public.teams enable row level security;
+alter table public.matches enable row level security;
 
 -- Profiles policies
 drop policy if exists "read_own_profile" on public.profiles;

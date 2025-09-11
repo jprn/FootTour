@@ -8,6 +8,7 @@ import AuthLoginPage, { onMountAuthLogin } from './pages/auth_login.js';
 import AuthSignupPage, { onMountAuthSignup } from './pages/auth_signup.js';
 import BillingCheckoutPage, { onMountBillingCheckout } from './pages/billing_checkout.js';
 import SubscriptionPage, { onMountSubscription } from './pages/subscription.js';
+import SchedulePage, { onMountSchedule } from './pages/schedule.js';
 
 // Helper to register on-mount callbacks per page
 function onMount(fn) {
@@ -16,15 +17,24 @@ function onMount(fn) {
 }
 
 // Simple toast utility (attached to window.showToast)
-function showToast(message, { type = 'info', timeout = 2200 } = {}) {
+function showToast(message, { type = 'info', timeout = 2200, actionLabel, onAction } = {}) {
   // remove existing
   document.querySelectorAll('.ft-toast').forEach(n => n.remove());
   const el = document.createElement('div');
-  el.className = `ft-toast fixed z-50 left-1/2 -translate-x-1/2 top-4 px-4 py-2 rounded-2xl shadow-soft border text-sm
+  el.className = `ft-toast fixed z-50 left-1/2 -translate-x-1/2 top-4 px-4 py-2 rounded-2xl shadow-soft border text-sm flex items-center gap-3
     ${type === 'success' ? 'bg-green-50 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-200'
       : type === 'error' ? 'bg-red-50 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200'
       : 'bg-white/90 border-gray-200 text-gray-900 dark:bg-white/10 dark:border-white/20 dark:text-white'}`;
-  el.textContent = message;
+  const span = document.createElement('span');
+  span.textContent = message;
+  el.appendChild(span);
+  if (actionLabel) {
+    const btn = document.createElement('button');
+    btn.className = 'px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 text-xs';
+    btn.textContent = actionLabel;
+    btn.addEventListener('click', () => { try { onAction && onAction(); } catch {} el.remove(); });
+    el.appendChild(btn);
+  }
   document.body.appendChild(el);
   setTimeout(() => { el.remove(); }, timeout);
 }
@@ -59,6 +69,10 @@ addRoute('/billing/checkout', async () => {
 addRoute('/account/subscription', async () => {
   onMount(() => onMountSubscription());
   return SubscriptionPage();
+});
+addRoute('/app/t/:id/schedule', async ({ id }) => {
+  onMount(() => onMountSchedule({ id }));
+  return SchedulePage({ id });
 });
 
 // Auth UI and nav actions

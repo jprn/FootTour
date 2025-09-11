@@ -7,7 +7,10 @@ export default function TournamentDashboardPage({ id }) {
         <a href="#/app/tournaments" class="text-sm text-gray-500">← Mes tournois</a>
         <h1 id="tt-name" class="text-2xl font-semibold mt-1">Tournoi</h1>
       </div>
-      <a href="#/app/t/${id}/teams" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Équipes</a>
+      <div class="flex gap-2">
+        <a href="#/app/t/${id}/schedule" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Planning</a>
+        <a href="#/app/t/${id}/teams" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Équipes</a>
+      </div>
     </div>
     <section class="mt-6 grid md:grid-cols-3 gap-4">
       <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
