@@ -27,9 +27,11 @@ export async function navigate(hash) {
 }
 
 export async function handleRoute() {
+  const full = location.hash.replace(/^#/, '') || '/';
+  const pathOnly = full.split('?')[0];
   const potentialMatches = routes.map(route => ({
     route,
-    result: location.hash.replace(/^#/, '') || '/',
+    result: pathOnly,
   })).map(m => ({
     ...m,
     result: m.result.match(routeToRegex(m.route.path)),
