@@ -107,12 +107,9 @@ async function init(id) {
     // Offer random poule creation if no groups exist
     const { count } = await supabase.from('groups').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
     if ((count ?? 0) === 0) {
-      const btn = document.createElement('button');
-      btn.id = 'create-random-groups';
-      btn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
-      btn.textContent = 'Créer des poules aléatoires';
-      btn.addEventListener('click', () => createRandomGroups(id));
-      btnGroups.parentElement?.appendChild(btn);
+      // No groups on schedule page: just inform the user
+      const list = document.getElementById('matches-list');
+      list.innerHTML = '<div class="col-span-full text-sm opacity-70">Aucune poule. Créez-les depuis le tableau de bord (bouton "Générer les poules").</div>';
     } else if ((matchCount ?? 0) === 0) {
       // Auto-generate round robin if we have groups and no matches yet
       await generateGroupRoundRobin(id);
