@@ -15,6 +15,7 @@ export default function SchedulePage({ id }) {
 
     <section id="schedule-content" class="mt-6 space-y-6">
       <div id="format-info" class="text-sm text-gray-500">Chargement du tournoi…</div>
+      <div id="groups-summary" class="grid md:grid-cols-3 gap-4"></div>
       <div id="matches-list" class="grid md:grid-cols-2 gap-4"></div>
     </section>
   `;
@@ -75,15 +76,8 @@ async function createRandomGroups(tournamentId) {
     if (uErr) { alert(uErr.message); return; }
   }
 
-  try { window.showToast && window.showToast('Poules créées aléatoirement', { type: 'success' }); } catch {}
-
-  // propose to generate matches now
-  const yes = confirm('Poules créées. Voulez-vous générer le planning (round robin) maintenant ?');
-  if (yes) {
-    await generateGroupRoundRobin(tournamentId);
-  } else {
-    await loadMatches(tournamentId);
-  }
+  try { window.showToast && window.showToast('Poules créées aléatoirement. Génération du calendrier…', { type: 'success' }); } catch {}
+  await generateGroupRoundRobin(tournamentId);
 }
 export function onMountSchedule({ id }) {
   init(id);
@@ -96,11 +90,16 @@ async function init(id) {
 
   const { data: t, error } = await supabase.from('tournaments').select('*').eq('id', id).single();
   if (error) { info.textContent = error.message; return; }
+  // Check if matches already exist
+  const { count: matchCount } = await supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
   if (t.format === 'groups_knockout') {
     info.textContent = 'Format: Poules + Phase finale';
     btnGroups.classList.remove('hidden');
     btnGroups.textContent = 'Générer poules (round robin)';
     btnGroups.onclick = () => generateGroupRoundRobin(id);
+
+    // Show groups summary
+    await renderGroups(id);
 
     // Offer random poule creation if no groups exist
     const { count } = await supabase.from('groups').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
@@ -111,11 +110,17 @@ async function init(id) {
       btn.textContent = 'Créer des poules aléatoires';
       btn.addEventListener('click', () => createRandomGroups(id));
       btnGroups.parentElement?.appendChild(btn);
+    } else if ((matchCount ?? 0) === 0) {
+      // Auto-generate round robin if we have groups and no matches yet
+      await generateGroupRoundRobin(id);
     }
   } else {
     info.textContent = 'Format: Élimination directe';
     btnKO.classList.remove('hidden');
     btnKO.onclick = () => generateKnockout(id);
+    if ((matchCount ?? 0) === 0) {
+      await generateKnockout(id);
+    }
   }
 
   await loadMatches(id);
