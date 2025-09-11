@@ -17,6 +17,7 @@ export default function SubscriptionPage() {
         <div class="mt-4 flex gap-2">
           <button id="apply-plan" class="px-4 py-2 rounded-2xl bg-primary text-white">Continuer</button>
           <a href="#/billing/checkout" id="go-checkout" class="px-4 py-2 rounded-2xl border border-gray-300 dark:border-white/20 hidden">Procéder au paiement</a>
+          <button id="cancel-sub" class="px-4 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Annuler</button>
         </div>
         <div id="sub-msg" class="mt-3 text-sm"></div>
       </div>
@@ -29,6 +30,7 @@ export function onMountSubscription() {
   const currentEl = document.getElementById('current-plan');
   const select = document.getElementById('sub-plan');
   const goCheckout = document.getElementById('go-checkout');
+  const cancelBtn = document.getElementById('cancel-sub');
 
   function updateCtaVisibility() {
     const p = select.value;
@@ -53,6 +55,11 @@ export function onMountSubscription() {
 
   select.addEventListener('change', updateCtaVisibility);
 
+  cancelBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    history.back();
+  });
+
   document.getElementById('apply-plan')?.addEventListener('click', async () => {
     msg.textContent = '';
     const plan = select.value;
@@ -63,6 +70,8 @@ export function onMountSubscription() {
       const { error } = await supabase.from('profiles').update({ plan }).eq('id', session.session.user.id);
       if (error) { msg.textContent = error.message; return; }
       msg.textContent = 'Votre plan a été mis à jour vers FREE.';
+      try { window.dispatchEvent(new Event('profile:updated')); } catch {}
+      try { window.showToast && window.showToast('Votre plan est passé à FREE', { type: 'success' }); } catch {}
       setTimeout(() => { location.hash = '#/app/tournaments'; }, 800);
     } else {
       // Passer par la page de paiement simulé

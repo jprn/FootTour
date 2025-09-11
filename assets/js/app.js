@@ -15,6 +15,21 @@ function onMount(fn) {
   window.__page_on_mount.push(fn);
 }
 
+// Simple toast utility (attached to window.showToast)
+function showToast(message, { type = 'info', timeout = 2200 } = {}) {
+  // remove existing
+  document.querySelectorAll('.ft-toast').forEach(n => n.remove());
+  const el = document.createElement('div');
+  el.className = `ft-toast fixed z-50 left-1/2 -translate-x-1/2 top-4 px-4 py-2 rounded-2xl shadow-soft border text-sm
+    ${type === 'success' ? 'bg-green-50 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-200'
+      : type === 'error' ? 'bg-red-50 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200'
+      : 'bg-white/90 border-gray-200 text-gray-900 dark:bg-white/10 dark:border-white/20 dark:text-white'}`;
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); }, timeout);
+}
+window.showToast = showToast;
+
 // Routes
 addRoute('/', async () => LandingPage());
 addRoute('/app/tournaments', async () => {
@@ -59,7 +74,13 @@ async function renderNav() {
       plan = prof?.plan || 'free';
     } catch {}
 
-    const planBadge = `<a href="#/account/subscription" class="px-2 py-1 rounded-xl text-xs border ${plan==='free' ? 'border-gray-300 text-gray-600 dark:border-white/20' : 'border-success/40 text-success'}">${plan.toUpperCase()}</a>`;
+    // Badge color per plan
+    const badgeClass = (
+      plan === 'pro' ? 'border-success/40 text-success' :
+      plan === 'club' ? 'border-primary/40 text-primary' :
+      'border-gray-300 text-gray-600 dark:border-white/20'
+    );
+    const planBadge = `<a href="#/account/subscription" class="px-2 py-1 rounded-xl text-xs border ${badgeClass}">${plan.toUpperCase()}</a>`;
     const upgradeCta = plan === 'free' ? `<a href="#/billing/checkout?plan=pro" class="hidden sm:inline px-3 py-1.5 rounded-xl bg-primary text-white">Passer en Pro</a>` : '';
 
     nav.innerHTML = `
@@ -127,3 +148,7 @@ function setupAuthHandlers() {
 setupAuthHandlers();
 renderNav();
 handleRoute();
+
+// Re-render nav when the URL changes or profile is updated
+window.addEventListener('hashchange', renderNav);
+window.addEventListener('profile:updated', renderNav);

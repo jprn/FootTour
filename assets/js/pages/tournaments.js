@@ -145,6 +145,8 @@ export function onMountTournaments() {
 
   loadTournaments();
   updateQuotaIndicator();
+  // Refresh quota when plan/profile updates
+  window.addEventListener('profile:updated', updateQuotaIndicator);
 }
 
 async function loadTournaments() {

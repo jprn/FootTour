@@ -89,6 +89,9 @@ export function onMountBillingCheckout() {
     if (error) { msg.textContent = error.message; return; }
 
     msg.textContent = 'Paiement réussi. Votre plan a été mis à jour.';
+    // Notify app to refresh nav badge/quotas & show toast
+    try { window.dispatchEvent(new Event('profile:updated')); } catch {}
+    try { window.showToast && window.showToast('Votre plan est passé à ' + plan.toUpperCase(), { type: 'success' }); } catch {}
     setTimeout(() => { location.hash = '#/app/tournaments'; }, 800);
   });
 }
