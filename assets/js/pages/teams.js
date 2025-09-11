@@ -128,9 +128,29 @@ async function loadTeams(id, { highlightId } = {}) {
       const teamId = delBtn.getAttribute('data-id');
       const ok = confirm('Confirmer la suppression de cette équipe ?');
       if (!ok) return;
+      // Fetch team before delete for potential undo
+      const { data: toRestore } = await supabase.from('teams').select('*').eq('id', teamId).single();
       const { error } = await supabase.from('teams').delete().eq('id', teamId);
       if (error) { alert(error.message); return; }
-      try { window.showToast && window.showToast('Équipe supprimée', { type: 'success' }); } catch {}
+      try {
+        window.showToast && window.showToast('Équipe supprimée', {
+          type: 'success',
+          actionLabel: 'Annuler',
+          onAction: async () => {
+            if (!toRestore) return;
+            // Try to reinsert with same id; if conflict, insert without id
+            let insErr = null;
+            const payload = { id: toRestore.id, tournament_id: toRestore.tournament_id, group_id: toRestore.group_id, name: toRestore.name, logo_url: toRestore.logo_url };
+            let res = await supabase.from('teams').insert(payload);
+            if (res.error) {
+              const { error: err2 } = await supabase.from('teams').insert({ tournament_id: toRestore.tournament_id, group_id: toRestore.group_id, name: toRestore.name, logo_url: toRestore.logo_url });
+              insErr = err2;
+            }
+            if (insErr) { alert(insErr.message); }
+            loadTeams(id);
+          }
+        });
+      } catch {}
       loadTeams(id);
       return;
     }

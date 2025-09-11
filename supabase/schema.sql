@@ -89,7 +89,9 @@ for update using ( auth.uid() = id );
 drop policy if exists "owner_select" on public.tournaments;
 create policy "owner_select" on public.tournaments
 for select using ( owner = auth.uid() );
+-- Ensure we drop any previous version of the insert policy regardless of its name
 drop policy if exists "owner_insert" on public.tournaments;
+drop policy if exists "owner_insert_with_plan_limit" on public.tournaments;
 create policy "owner_insert_with_plan_limit" on public.tournaments
 for insert with check (
   -- must be the owner
