@@ -20,6 +20,71 @@ export default function SchedulePage({ id }) {
   `;
 }
 
+// Heuristic to recommend number of groups aiming for ~4-5 teams per group and balanced distribution
+function recommendGroups(totalTeams, maxGroups) {
+  const minGroups = 2;
+  const targetSize = 4.5; // prefer groups of 4-5
+  let bestK = Math.min(Math.max(minGroups, Math.floor(totalTeams / targetSize)), maxGroups);
+  let bestScore = Infinity;
+  for (let k = minGroups; k <= maxGroups; k++) {
+    const size = totalTeams / k;
+    const balancePenalty = (totalTeams % k === 0) ? 0 : 0.3; // prefer even split
+    const sizePenalty = Math.abs(size - targetSize);
+    const score = sizePenalty + balancePenalty;
+    if (score < bestScore) { bestScore = score; bestK = k; }
+  }
+  return bestK;
+}
+
+async function createRandomGroups(tournamentId) {
+  // fetch all teams of tournament
+  const { data: teams, error } = await supabase
+    .from('teams')
+    .select('id, name')
+    .eq('tournament_id', tournamentId)
+    .order('created_at', { ascending: true });
+  if (error) { alert(error.message); return; }
+  if (!teams?.length) { alert('Aucune équipe dans le tournoi.'); return; }
+
+  // ask number of groups
+  const maxGroups = Math.min(8, teams.length);
+  const recommended = recommendGroups(teams.length, maxGroups);
+  let n = parseInt(
+    prompt(
+      `Nombre de poules (2 à ${maxGroups}) ?\nRecommandé: ${recommended} (≈ ${Math.ceil(teams.length / recommended)} équipes/poule)`,
+      String(recommended)
+    ) || '0',
+    10
+  );
+  if (!Number.isFinite(n) || n < 2 || n > maxGroups) { alert('Nombre de poules invalide.'); return; }
+
+  // shuffle teams
+  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+
+  // create groups A, B, C...
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const groupPayload = Array.from({ length: n }).map((_, i) => ({ tournament_id: tournamentId, name: letters[i] }));
+  const { data: created, error: gErr } = await supabase.from('groups').insert(groupPayload).select('id, name').order('name', { ascending: true });
+  if (gErr) { alert(gErr.message); return; }
+
+  // assign teams round-robin into groups
+  for (let i = 0; i < shuffled.length; i++) {
+    const g = created[i % created.length];
+    const team = shuffled[i];
+    const { error: uErr } = await supabase.from('teams').update({ group_id: g.id }).eq('id', team.id);
+    if (uErr) { alert(uErr.message); return; }
+  }
+
+  try { window.showToast && window.showToast('Poules créées aléatoirement', { type: 'success' }); } catch {}
+
+  // propose to generate matches now
+  const yes = confirm('Poules créées. Voulez-vous générer le planning (round robin) maintenant ?');
+  if (yes) {
+    await generateGroupRoundRobin(tournamentId);
+  } else {
+    await loadMatches(tournamentId);
+  }
+}
 export function onMountSchedule({ id }) {
   init(id);
 }
@@ -34,7 +99,19 @@ async function init(id) {
   if (t.format === 'groups_knockout') {
     info.textContent = 'Format: Poules + Phase finale';
     btnGroups.classList.remove('hidden');
+    btnGroups.textContent = 'Générer poules (round robin)';
     btnGroups.onclick = () => generateGroupRoundRobin(id);
+
+    // Offer random poule creation if no groups exist
+    const { count } = await supabase.from('groups').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
+    if ((count ?? 0) === 0) {
+      const btn = document.createElement('button');
+      btn.id = 'create-random-groups';
+      btn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      btn.textContent = 'Créer des poules aléatoires';
+      btn.addEventListener('click', () => createRandomGroups(id));
+      btnGroups.parentElement?.appendChild(btn);
+    }
   } else {
     info.textContent = 'Format: Élimination directe';
     btnKO.classList.remove('hidden');
