@@ -3,13 +3,43 @@ import { supabase } from '../supabaseClient.js';
 export default function TournamentsPage() {
   return `
     <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Mes tournois</h1>
+      <div>
+        <h1 class="text-2xl font-semibold">Mes tournois</h1>
+        <div class="mt-1 text-sm text-gray-500 flex items-center gap-2">
+          <span id="quota-indicator" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">—</span>
+          <a id="upgrade-inline" href="#/billing/checkout?plan=pro" class="hidden text-primary underline">Passer en Pro</a>
+        </div>
+      </div>
       <button id="new-tournament-btn" class="px-3 py-2 rounded-2xl bg-primary text-white">Nouveau tournoi</button>
     </div>
 
     <section id="tournaments-list" class="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
 
     ${CreateTournamentModal()}
+
+async function updateQuotaIndicator() {
+  const badge = document.getElementById('quota-indicator');
+  const upgrade = document.getElementById('upgrade-inline');
+  if (!badge) return;
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session) { badge.textContent = 'Non connecté'; return; }
+  const uid = session.session.user.id;
+  const [{ data: prof }, { count }] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', uid).single(),
+    supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('owner', uid),
+  ]);
+  const plan = prof?.plan || 'free';
+  if (plan === 'free') {
+    badge.textContent = `Free — ${Math.min(count ?? 0, 1)}/1 tournoi`;
+    upgrade?.classList.remove('hidden');
+  } else if (plan === 'pro' || plan === 'club') {
+    badge.textContent = `${plan.toUpperCase()} — illimité`;
+    upgrade?.classList.add('hidden');
+  } else {
+    badge.textContent = `${plan.toUpperCase()} — illimité`;
+    upgrade?.classList.add('hidden');
+  }
+}
   `;
 }
 
@@ -138,6 +168,7 @@ export function onMountTournaments() {
   });
 
   loadTournaments();
+  updateQuotaIndicator();
 }
 
 async function loadTournaments() {

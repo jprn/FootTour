@@ -7,6 +7,7 @@ import TeamsPage, { onMountTeams } from './pages/teams.js';
 import AuthLoginPage, { onMountAuthLogin } from './pages/auth_login.js';
 import AuthSignupPage, { onMountAuthSignup } from './pages/auth_signup.js';
 import BillingCheckoutPage, { onMountBillingCheckout } from './pages/billing_checkout.js';
+import SubscriptionPage, { onMountSubscription } from './pages/subscription.js';
 
 // Helper to register on-mount callbacks per page
 function onMount(fn) {
@@ -40,6 +41,10 @@ addRoute('/billing/checkout', async () => {
   onMount(() => onMountBillingCheckout());
   return BillingCheckoutPage();
 });
+addRoute('/account/subscription', async () => {
+  onMount(() => onMountSubscription());
+  return SubscriptionPage();
+});
 
 // Auth UI and nav actions
 async function renderNav() {
@@ -54,7 +59,7 @@ async function renderNav() {
       plan = prof?.plan || 'free';
     } catch {}
 
-    const planBadge = `<span class="px-2 py-1 rounded-xl text-xs border ${plan==='free' ? 'border-gray-300 text-gray-600 dark:border-white/20' : 'border-success/40 text-success'}">${plan.toUpperCase()}</span>`;
+    const planBadge = `<a href="#/account/subscription" class="px-2 py-1 rounded-xl text-xs border ${plan==='free' ? 'border-gray-300 text-gray-600 dark:border-white/20' : 'border-success/40 text-success'}">${plan.toUpperCase()}</a>`;
     const upgradeCta = plan === 'free' ? `<a href="#/billing/checkout?plan=pro" class="hidden sm:inline px-3 py-1.5 rounded-xl bg-primary text-white">Passer en Pro</a>` : '';
 
     nav.innerHTML = `
