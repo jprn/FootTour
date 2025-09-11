@@ -10,6 +10,14 @@ export default function AuthSignupPage() {
         <input type="email" name="email" placeholder="email@domaine.com" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
         <input type="password" name="password" placeholder="Mot de passe (min 6)" minlength="6" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
         <input type="password" name="passwordConfirm" placeholder="Confirmer le mot de passe" minlength="6" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+        <div>
+          <label class="text-sm">Plan</label>
+          <select name="plan" class="w-full mt-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent">
+            <option value="free" selected>Free (1 tournoi, 8 équipes)</option>
+            <option value="pro">Pro (illimité, exports, sans branding)</option>
+            <option value="club">Club (99€/an, saison & support)</option>
+          </select>
+        </div>
         <button id="signup-btn" class="px-3 py-2 rounded-2xl bg-primary text-white w-full">S'inscrire</button>
       </form>
 
@@ -38,6 +46,7 @@ export function onMountAuthSignup() {
     const email = fd.get('email');
     const password = fd.get('password');
     const passwordConfirm = fd.get('passwordConfirm');
+    const plan = (fd.get('plan') || 'free');
     if (!email || !password) { msg.textContent = 'Veuillez saisir e-mail et mot de passe.'; return; }
     if (password !== passwordConfirm) { msg.textContent = 'Les mots de passe ne correspondent pas.'; return; }
 
@@ -46,6 +55,7 @@ export function onMountAuthSignup() {
       password,
       options: {
         emailRedirectTo: `${origin}/#/auth/login`,
+        data: { plan },
       },
     });
     if (error) { msg.textContent = error.message; return; }
