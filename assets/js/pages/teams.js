@@ -12,15 +12,15 @@ export default function TeamsPage({ id }) {
 
     <section id="teams-list" class="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
 
-    <dialog id="team-modal" class="backdrop:bg-black/30 rounded-2xl p-0">
-      <form method="dialog" id="team-form" class="p-6 w-[28rem] max-w-[95vw] bg-white dark:bg-dark rounded-2xl border border-gray-200/80 dark:border-white/10">
+    <dialog id="team-modal" class="backdrop:bg-black/40 rounded-2xl p-0">
+      <form method="dialog" id="team-form" class="p-6 w-[28rem] max-w-[95vw] bg-white dark:bg-dark text-gray-900 dark:text-gray-100 rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-soft">
         <h2 class="text-xl font-semibold">Nouvelle équipe</h2>
         <div class="mt-4 space-y-3">
-          <input required name="name" placeholder="Nom de l\'équipe" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
-          <input name="logo_url" placeholder="URL du logo (optionnel)" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <input required name="name" placeholder="Nom de l'équipe" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-white dark:bg-white/5 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/60" />
+          <input name="logo_url" placeholder="URL du logo (optionnel)" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-white dark:bg-white/5 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/60" />
         </div>
-        <div class="mt-4 text-right">
-          <button value="cancel" class="px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20">Annuler</button>
+        <div class="mt-4 flex justify-end gap-2">
+          <button value="cancel" class="px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/10">Annuler</button>
           <button id="create-team" class="px-3 py-2 rounded-xl bg-primary text-white">Ajouter</button>
         </div>
       </form>
