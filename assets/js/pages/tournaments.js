@@ -143,10 +143,13 @@ export function onMountTournaments() {
       }
       return;
     }
-    // Success: toast then navigate
+    // Success: toast then navigate to dashboard of the new tournament
+    const newId = data[0].id;
     try { window.showToast && window.showToast('Tournoi créé avec succès', { type: 'success' }); } catch {}
+    // Pass context to the dashboard to animate
+    try { sessionStorage.setItem('justCreatedTournamentId', newId); } catch {}
     modal.close();
-    location.hash = `#/app/t/${data[0].id}`;
+    location.hash = `#/app/t/${newId}`;
   });
 
   loadTournaments();
@@ -170,12 +173,34 @@ async function loadTournaments() {
   }
 
   list.innerHTML = data.map(t => `
-    <a href="#/app/t/${t.id}" class="block p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:shadow-soft transition">
-      <div class="text-sm uppercase tracking-wide text-gray-500">${t.sport}</div>
-      <div class="mt-1 font-semibold">${t.name}</div>
-      <div class="text-sm text-gray-500">${t.location || ''} ${t.dates ? '· ' + t.dates : ''}</div>
-    </a>
+    <div class="relative group">
+      <a href="#/app/t/${t.id}" class="block p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:shadow-soft transition">
+        <div class="text-sm uppercase tracking-wide text-gray-500">${t.sport}</div>
+        <div class="mt-1 font-semibold">${t.name}</div>
+        <div class="text-sm text-gray-500">${t.location || ''} ${t.dates ? '· ' + t.dates : ''}</div>
+      </a>
+      <button title="Supprimer" data-action="delete-tournament" data-id="${t.id}"
+        class="opacity-0 group-hover:opacity-100 transition absolute top-2 right-2 px-2 py-1 rounded-xl border border-red-300 text-red-600 bg-white/80 dark:bg-white/10 dark:border-red-400 text-xs">
+        Supprimer
+      </button>
+    </div>
   `).join('');
+
+  // Delete handler (event delegation)
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-action="delete-tournament"]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = btn.getAttribute('data-id');
+    const ok = confirm('Confirmer la suppression de ce tournoi ? Cette action est irréversible.');
+    if (!ok) return;
+    const { error } = await supabase.from('tournaments').delete().eq('id', id);
+    if (error) { alert(error.message); return; }
+    try { window.showToast && window.showToast('Tournoi supprimé', { type: 'success' }); } catch {}
+    await loadTournaments();
+    updateQuotaIndicator();
+  }, { once: false });
 }
 
 async function updateQuotaIndicator() {

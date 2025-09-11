@@ -28,6 +28,21 @@ export default function TournamentDashboardPage({ id }) {
 
 export function onMountTournamentDashboard({ id }) {
   load(id);
+  // If navigated just after creation, show contextual animation on dashboard header
+  try {
+    const createdId = sessionStorage.getItem('justCreatedTournamentId');
+    if (createdId && createdId === id) {
+      sessionStorage.removeItem('justCreatedTournamentId');
+      const headerName = document.getElementById('tt-name');
+      if (headerName) {
+        headerName.classList.add('ring-2','ring-primary','rounded-xl','px-1');
+        setTimeout(() => {
+          headerName.classList.remove('ring-2','ring-primary');
+        }, 1000);
+      }
+      try { window.showToast && window.showToast('Tournoi prêt. Configurez vos équipes et le planning.', { type: 'success' }); } catch {}
+    }
+  } catch {}
 }
 
 async function load(id) {

@@ -37,29 +37,45 @@ export function onMountTeams({ id }) {
     const form = document.getElementById('team-form');
     const fd = new FormData(form);
     const body = Object.fromEntries(fd.entries());
-    const { error } = await supabase.from('teams').insert({
+    const { data, error } = await supabase.from('teams').insert({
       tournament_id: id,
       name: body.name,
       logo_url: body.logo_url || null,
-    });
+    }).select('id');
     if (error) { alert(error.message); return; }
     modal.close();
-    loadTeams(id);
+    try { window.showToast && window.showToast('Équipe ajoutée', { type: 'success' }); } catch {}
+    const newId = data?.[0]?.id;
+    loadTeams(id, { highlightId: newId });
   });
 
   loadTeams(id);
 }
 
-async function loadTeams(id) {
+async function loadTeams(id, { highlightId } = {}) {
   const list = document.getElementById('teams-list');
   list.innerHTML = '<div class="col-span-full text-sm opacity-70">Chargement...</div>';
   const { data, error } = await supabase.from('teams').select('*').eq('tournament_id', id).order('created_at', { ascending: true });
   if (error) { list.innerHTML = `<div class=\"text-red-600\">${error.message}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div class="opacity-70">Aucune équipe.</div>'; return; }
   list.innerHTML = data.map(t => `
-    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 flex items-center gap-3">
+    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 flex items-center gap-3 transition-all" data-team-id="${t.id}" id="team-${t.id}">
       ${t.logo_url ? `<img src="${t.logo_url}" class="w-10 h-10 rounded-xl object-cover" alt="logo" />` : `<div class="w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 grid place-items-center">${t.name[0]}</div>`}
       <div class="font-medium">${t.name}</div>
     </div>
   `).join('');
+
+  if (highlightId) {
+    const el = document.getElementById(`team-${highlightId}`);
+    if (el) {
+      el.classList.add('ring-2','ring-primary','animate-pulse');
+      setTimeout(() => {
+        el.classList.remove('animate-pulse');
+        setTimeout(() => {
+          el.classList.remove('ring-2','ring-primary');
+        }, 600);
+      }, 1200);
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
 }
