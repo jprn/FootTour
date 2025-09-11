@@ -16,30 +16,6 @@ export default function TournamentsPage() {
     <section id="tournaments-list" class="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
 
     ${CreateTournamentModal()}
-
-async function updateQuotaIndicator() {
-  const badge = document.getElementById('quota-indicator');
-  const upgrade = document.getElementById('upgrade-inline');
-  if (!badge) return;
-  const { data: session } = await supabase.auth.getSession();
-  if (!session?.session) { badge.textContent = 'Non connecté'; return; }
-  const uid = session.session.user.id;
-  const [{ data: prof }, { count }] = await Promise.all([
-    supabase.from('profiles').select('plan').eq('id', uid).single(),
-    supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('owner', uid),
-  ]);
-  const plan = prof?.plan || 'free';
-  if (plan === 'free') {
-    badge.textContent = `Free — ${Math.min(count ?? 0, 1)}/1 tournoi`;
-    upgrade?.classList.remove('hidden');
-  } else if (plan === 'pro' || plan === 'club') {
-    badge.textContent = `${plan.toUpperCase()} — illimité`;
-    upgrade?.classList.add('hidden');
-  } else {
-    badge.textContent = `${plan.toUpperCase()} — illimité`;
-    upgrade?.classList.add('hidden');
-  }
-}
   `;
 }
 
@@ -192,4 +168,28 @@ async function loadTournaments() {
       <div class="text-sm text-gray-500">${t.location || ''} ${t.dates ? '· ' + t.dates : ''}</div>
     </a>
   `).join('');
+}
+
+async function updateQuotaIndicator() {
+  const badge = document.getElementById('quota-indicator');
+  const upgrade = document.getElementById('upgrade-inline');
+  if (!badge) return;
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session) { badge.textContent = 'Non connecté'; return; }
+  const uid = session.session.user.id;
+  const [{ data: prof }, { count }] = await Promise.all([
+    supabase.from('profiles').select('plan').eq('id', uid).single(),
+    supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('owner', uid),
+  ]);
+  const plan = prof?.plan || 'free';
+  if (plan === 'free') {
+    badge.textContent = `Free — ${Math.min(count ?? 0, 1)}/1 tournoi`;
+    upgrade?.classList.remove('hidden');
+  } else if (plan === 'pro' || plan === 'club') {
+    badge.textContent = `${plan.toUpperCase()} — illimité`;
+    upgrade?.classList.add('hidden');
+  } else {
+    badge.textContent = `${plan.toUpperCase()} — illimité`;
+    upgrade?.classList.add('hidden');
+  }
 }
