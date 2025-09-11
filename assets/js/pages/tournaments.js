@@ -24,12 +24,12 @@ export default function TournamentsPage() {
 function CreateTournamentModal() {
   return `
   <dialog id="tournament-modal" class="backdrop:bg-black/30 rounded-2xl p-0">
-    <form method="dialog" id="tournament-form" class="p-6 w-[36rem] max-w-[95vw] bg-white dark:bg-dark rounded-2xl border border-gray-200/80 dark:border-white/10">
+    <form method="dialog" id="tournament-form" class="p-6 w-[36rem] max-w-[95vw] bg-white dark:bg-dark text-gray-900 dark:text-gray-100 rounded-2xl border border-gray-200/80 dark:border-white/10">
       <h2 class="text-xl font-semibold">Créer un tournoi</h2>
       <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="text-sm">Nom</label>
-          <input required name="name" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <input required name="name" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent placeholder-gray-400" placeholder="Nom du tournoi" />
         </div>
         <div>
           <label class="text-sm">Discipline</label>
@@ -43,11 +43,11 @@ function CreateTournamentModal() {
         </div>
         <div>
           <label class="text-sm">Lieu</label>
-          <input name="location" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <input name="location" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent placeholder-gray-400" placeholder="Ville / Complexe" />
         </div>
         <div>
           <label class="text-sm">Dates</label>
-          <input name="dates" placeholder="2025-09-20 → 2025-09-21" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <input name="dates" placeholder="2025-09-20 → 2025-09-21" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent placeholder-gray-400" />
         </div>
         <div>
           <label class="text-sm">Format</label>
@@ -58,12 +58,12 @@ function CreateTournamentModal() {
         </div>
         <div>
           <label class="text-sm">Points (V/N/D)</label>
-          <input name="points" value="3/1/0" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <input name="points" value="3/1/0" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent placeholder-gray-400" placeholder="3/1/0" />
         </div>
       </div>
       <div class="mt-4 text-right">
         <button value="cancel" class="px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20">Annuler</button>
-        <button id="create-tournament" class="px-3 py-2 rounded-xl bg-primary text-white">Créer</button>
+        <button id="create-tournament" class="px-3 py-2 rounded-2xl bg-primary text-white">Créer</button>
       </div>
     </form>
   </dialog>
@@ -72,6 +72,12 @@ function CreateTournamentModal() {
 
 export function onMountTournaments() {
   const modal = document.getElementById('tournament-modal');
+  // Ensure the cancel button closes the modal reliably
+  document.querySelector('#tournament-modal [value="cancel"]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    modal.close();
+  });
   document.getElementById('new-tournament-btn')?.addEventListener('click', async () => {
     // Check plan and tournaments count before allowing creation
     const { data: session } = await supabase.auth.getSession();

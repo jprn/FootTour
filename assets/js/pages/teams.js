@@ -30,7 +30,31 @@ export default function TeamsPage({ id }) {
 
 export function onMountTeams({ id }) {
   const modal = document.getElementById('team-modal');
-  document.getElementById('add-team')?.addEventListener('click', () => modal.showModal());
+  // Ensure cancel button works reliably
+  document.querySelector('#team-modal [value="cancel"]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    modal.close();
+  });
+
+  // Check plan and team count before allowing creation (Free: max 8 équipes)
+  document.getElementById('add-team')?.addEventListener('click', async () => {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) { alert('Veuillez vous connecter.'); return; }
+    const uid = session.session.user.id;
+
+    const [{ data: prof }, { count }] = await Promise.all([
+      supabase.from('profiles').select('plan').eq('id', uid).single(),
+      supabase.from('teams').select('id', { count: 'exact', head: true }).eq('tournament_id', id),
+    ]);
+    const plan = prof?.plan || 'free';
+    if (plan === 'free' && (count ?? 0) >= 8) {
+      try { window.showToast && window.showToast('Limite Free atteinte — 8 équipes max par tournoi. Passez en Pro pour plus.', { type: 'error' }); } catch {}
+      location.hash = '#/billing/checkout?plan=pro';
+      return;
+    }
+    modal.showModal();
+  });
 
   document.getElementById('create-team')?.addEventListener('click', async (e) => {
     e.preventDefault();

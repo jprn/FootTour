@@ -116,11 +116,35 @@ create policy "teams_owner_select" on public.teams
 for select using (
   exists (select 1 from public.tournaments t where t.id = teams.tournament_id and t.owner = auth.uid())
 );
-drop policy if exists "teams_owner_mutation" on public.teams;
-create policy "teams_owner_mutation" on public.teams
-for all using (
+
+-- Insert: owner AND plan-based limit for free (max 8 teams per tournament)
+drop policy if exists "teams_owner_insert_with_limit" on public.teams;
+create policy "teams_owner_insert_with_limit" on public.teams
+for insert with check (
   exists (select 1 from public.tournaments t where t.id = teams.tournament_id and t.owner = auth.uid())
-) with check (
+  and (
+    -- pro/club unlimited
+    exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan in ('pro','club'))
+    or (
+      -- free limited to < 8 teams per tournament
+      exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'free')
+      and (
+        (select count(1) from public.teams tt where tt.tournament_id = teams.tournament_id) < 8
+      )
+    )
+  )
+);
+
+-- Update/Delete: owner of the parent tournament
+drop policy if exists "teams_owner_update" on public.teams;
+create policy "teams_owner_update" on public.teams
+for update using (
+  exists (select 1 from public.tournaments t where t.id = teams.tournament_id and t.owner = auth.uid())
+);
+
+drop policy if exists "teams_owner_delete" on public.teams;
+create policy "teams_owner_delete" on public.teams
+for delete using (
   exists (select 1 from public.tournaments t where t.id = teams.tournament_id and t.owner = auth.uid())
 );
 
