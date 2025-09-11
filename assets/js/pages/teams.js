@@ -18,6 +18,11 @@ export default function TeamsPage({ id }) {
         <div class="mt-4 space-y-3">
           <input required name="name" placeholder="Nom de l'équipe" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-white dark:bg-white/5 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/60" />
           <input name="logo_url" placeholder="URL du logo (optionnel)" class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-white dark:bg-white/5 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/60" />
+          <div id="group-select-wrap" class="hidden">
+            <label class="text-sm">Affecter à la poule (optionnel)</label>
+            <select name="group_id" id="group-select" class="w-full mt-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-white dark:bg-white/5"></select>
+            <button type="button" id="reshuffle-groups" class="mt-2 text-xs px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">Répartir automatiquement toutes les poules</button>
+          </div>
         </div>
         <div class="mt-4 flex justify-end gap-2">
           <button value="cancel" class="px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/10">Annuler</button>
@@ -43,9 +48,10 @@ export function onMountTeams({ id }) {
     if (!session?.session) { alert('Veuillez vous connecter.'); return; }
     const uid = session.session.user.id;
 
-    const [{ data: prof }, { count }] = await Promise.all([
+    const [{ data: prof }, { count }, { data: groups }] = await Promise.all([
       supabase.from('profiles').select('plan').eq('id', uid).single(),
       supabase.from('teams').select('id', { count: 'exact', head: true }).eq('tournament_id', id),
+      supabase.from('groups').select('id, name').eq('tournament_id', id).order('name', { ascending: true }),
     ]);
     const plan = prof?.plan || 'free';
     if (plan === 'free' && (count ?? 0) >= 8) {
@@ -53,7 +59,28 @@ export function onMountTeams({ id }) {
       location.hash = '#/billing/checkout?plan=pro';
       return;
     }
+    // Populate groups select if groups exist
+    const wrap = document.getElementById('group-select-wrap');
+    const sel = document.getElementById('group-select');
+    if (groups?.length) {
+      wrap.classList.remove('hidden');
+      sel.innerHTML = '<option value="">— Choisir une poule —</option>' + groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+    } else {
+      wrap.classList.add('hidden');
+      sel.innerHTML = '';
+    }
     modal.showModal();
+  });
+
+  // Reshuffle groups including new teams
+  document.getElementById('reshuffle-groups')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const ok = confirm('Recréer la répartition aléatoire des équipes dans les poules et régénérer le calendrier ?');
+    if (!ok) return;
+    await reshuffleExistingGroups(id);
+    try { window.showToast && window.showToast('Poules rejouées et calendrier régénéré', { type: 'success' }); } catch {}
+    modal.close();
+    loadTeams(id);
   });
 
   document.getElementById('create-team')?.addEventListener('click', async (e) => {
@@ -80,10 +107,17 @@ export function onMountTeams({ id }) {
       tournament_id: id,
       name: body.name,
       logo_url: body.logo_url || null,
+      group_id: body.group_id || null,
     }).select('id');
     if (error) { alert(error.message); return; }
     modal.close();
-    try { window.showToast && window.showToast('Équipe ajoutée', { type: 'success' }); } catch {}
+    try {
+      window.showToast && window.showToast('Équipe ajoutée', {
+        type: 'success',
+        actionLabel: 'Répartir maintenant',
+        onAction: async () => { await reshuffleExistingGroups(id); loadTeams(id); }
+      });
+    } catch {}
     const newId = data?.[0]?.id;
     loadTeams(id, { highlightId: newId });
   });
