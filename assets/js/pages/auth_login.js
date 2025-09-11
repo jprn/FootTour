@@ -27,6 +27,7 @@ export default function AuthLoginPage() {
 export function onMountAuthLogin() {
   const form = document.getElementById('login-form');
   const msg = document.getElementById('auth-msg');
+  const origin = (location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : 'http://localhost:5173';
 
   document.getElementById('login-btn')?.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -35,7 +36,11 @@ export function onMountAuthLogin() {
     const email = fd.get('email');
     const password = fd.get('password');
     if (!email || !password) { msg.textContent = 'Veuillez saisir e-mail et mot de passe.'; return; }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { emailRedirectTo: `${origin}/#/auth/login` },
+    });
     if (error) { msg.textContent = error.message; return; }
     location.hash = '#/app/tournaments';
   });
@@ -46,7 +51,10 @@ export function onMountAuthLogin() {
     const fd = new FormData(form);
     const email = fd.get('email');
     if (!email) { msg.textContent = 'Veuillez saisir votre e-mail.'; return; }
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${origin}/#/auth/login` },
+    });
     if (error) { msg.textContent = error.message; return; }
     msg.textContent = 'Lien magique envoyé. Vérifiez votre e-mail.';
   });

@@ -18,6 +18,9 @@ export default function AuthSignupPage() {
       </div>
 
       <div id="auth-msg" class="mt-4 text-sm"></div>
+      <div class="mt-2">
+        <button id="resend-email" class="text-sm underline">Renvoyer l'email de vérification</button>
+      </div>
     </section>
   `;
 }
@@ -25,6 +28,8 @@ export default function AuthSignupPage() {
 export function onMountAuthSignup() {
   const form = document.getElementById('signup-form');
   const msg = document.getElementById('auth-msg');
+  const resendBtn = document.getElementById('resend-email');
+  const origin = (location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : 'http://localhost:5173';
 
   document.getElementById('signup-btn')?.addEventListener('click', async (e) => {
     e.preventDefault();
@@ -36,11 +41,31 @@ export function onMountAuthSignup() {
     if (!email || !password) { msg.textContent = 'Veuillez saisir e-mail et mot de passe.'; return; }
     if (password !== passwordConfirm) { msg.textContent = 'Les mots de passe ne correspondent pas.'; return; }
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${origin}/#/auth/login`,
+      },
+    });
     if (error) { msg.textContent = error.message; return; }
 
     msg.textContent = 'Compte créé. Vérifiez votre e-mail pour confirmer, puis connectez-vous.';
     // Optionnel: rediriger vers login
     setTimeout(() => { location.hash = '#/auth/login'; }, 800);
+  });
+
+  resendBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const email = fd.get('email');
+    if (!email) { msg.textContent = 'Saisissez votre e-mail dans le formulaire pour renvoyer.'; return; }
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${origin}/#/auth/login` },
+    });
+    if (error) { msg.textContent = error.message; return; }
+    msg.textContent = 'E-mail de vérification renvoyé.';
   });
 }
