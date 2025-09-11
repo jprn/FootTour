@@ -70,8 +70,25 @@ drop policy if exists "owner_select" on public.tournaments;
 create policy "owner_select" on public.tournaments
 for select using ( owner = auth.uid() );
 drop policy if exists "owner_insert" on public.tournaments;
-create policy "owner_insert" on public.tournaments
-for insert with check ( owner = auth.uid() );
+create policy "owner_insert_with_plan_limit" on public.tournaments
+for insert with check (
+  -- must be the owner
+  owner = auth.uid()
+  and (
+    -- non-free plans: unlimited
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.plan in ('pro','club')
+    )
+    or (
+      -- free plan: limit to < 1 tournaments
+      exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'free')
+      and (
+        (select count(1) from public.tournaments t where t.owner = auth.uid()) < 1
+      )
+    )
+  )
+);
 drop policy if exists "owner_update" on public.tournaments;
 create policy "owner_update" on public.tournaments
 for update using ( owner = auth.uid() );

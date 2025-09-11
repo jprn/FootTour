@@ -87,7 +87,26 @@ export function onMountTournaments() {
     };
 
     const { data, error } = await supabase.from('tournaments').insert(payload).select('id');
-    if (error) { alert(error.message); return; }
+    if (error) {
+      const msg = String(error.message || '').toLowerCase();
+      const looksLikeRls = msg.includes('row-level security') || msg.includes('policy') || msg.includes('permission denied');
+      if (looksLikeRls) {
+        const goPricing = confirm(
+          'Votre plan Free permet de créer 1 seul tournoi.\n\nPassez en Pro ou Club pour créer d\'autres tournois.\n\nVoulez-vous voir les plans ?'
+        );
+        if (goPricing) {
+          // Aller vers la landing et faire défiler jusqu'à la section pricing
+          location.hash = '#/';
+          setTimeout(() => {
+            const el = document.getElementById('pricing');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 300);
+        }
+      } else {
+        alert(error.message);
+      }
+      return;
+    }
     modal.close();
     location.hash = `#/app/t/${data[0].id}`;
   });

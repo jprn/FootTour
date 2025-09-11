@@ -14,7 +14,7 @@ export default function LandingPage() {
     </div>
   </section>
 
-  <section class="mt-16">
+  <section id="pricing" class="mt-16">
     <h2 class="text-2xl font-semibold text-center">Choisissez votre plan</h2>
     <p class="text-center text-gray-500 mt-1">Commencez gratuitement. Passez en Pro ou Club quand vous en avez besoin.</p>
     <div class="mt-8 grid md:grid-cols-3 gap-4">
