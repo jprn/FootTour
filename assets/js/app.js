@@ -64,6 +64,8 @@ addRoute('/account/subscription', async () => {
 // Auth UI and nav actions
 async function renderNav() {
   const nav = document.getElementById('nav-actions');
+  // Theme toggle button template
+  const themeBtn = `<button id="theme-toggle" title="Thème" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">🌓</button>`;
   const { data: session } = await supabase.auth.getSession();
   if (session?.session) {
     const email = session.session.user?.email ?? '';
@@ -93,6 +95,7 @@ async function renderNav() {
         <span class="hidden sm:inline text-sm text-gray-500">${email}</span>
         <a href="#/app/tournaments" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">Mes tournois</a>
         ${upgradeCta}
+        ${themeBtn}
         <button id="logout" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-black">Déconnexion</button>
       </div>`;
     document.getElementById('logout')?.addEventListener('click', async () => {
@@ -105,6 +108,7 @@ async function renderNav() {
       <div class="flex items-center gap-2">
         <a href="#/auth/login" class="px-3 py-1.5 rounded-xl bg-primary text-white">Se connecter</a>
         <a href="#/auth/signup" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">Créer un compte</a>
+        ${themeBtn}
       </div>`;
   }
 
@@ -129,6 +133,20 @@ async function renderNav() {
       }
     }
   } catch {}
+
+  // Setup theme toggle
+  const html = document.documentElement;
+  function applyTheme(t) {
+    if (t === 'dark') html.classList.add('dark');
+    else html.classList.remove('dark');
+  }
+  const stored = localStorage.getItem('ft-theme') || 'dark';
+  applyTheme(stored);
+  document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    const next = html.classList.contains('dark') ? 'light' : 'dark';
+    localStorage.setItem('ft-theme', next);
+    applyTheme(next);
+  });
 }
 
 // Auth modal behavior (landing)
