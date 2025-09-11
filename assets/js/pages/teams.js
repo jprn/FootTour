@@ -61,6 +61,21 @@ export function onMountTeams({ id }) {
     const form = document.getElementById('team-form');
     const fd = new FormData(form);
     const body = Object.fromEntries(fd.entries());
+    const editingId = form.getAttribute('data-edit-id');
+    // Decide insert or update
+    if (editingId) {
+      const { error } = await supabase.from('teams').update({
+        name: body.name,
+        logo_url: body.logo_url || null,
+      }).eq('id', editingId);
+      if (error) { alert(error.message); return; }
+      form.removeAttribute('data-edit-id');
+      modal.close();
+      try { window.showToast && window.showToast('Équipe mise à jour', { type: 'success' }); } catch {}
+      loadTeams(id, { highlightId: editingId });
+      return;
+    }
+
     const { data, error } = await supabase.from('teams').insert({
       tournament_id: id,
       name: body.name,
@@ -83,11 +98,43 @@ async function loadTeams(id, { highlightId } = {}) {
   if (error) { list.innerHTML = `<div class=\"text-red-600\">${error.message}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div class="opacity-70">Aucune équipe.</div>'; return; }
   list.innerHTML = data.map(t => `
-    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 flex items-center gap-3 transition-all" data-team-id="${t.id}" id="team-${t.id}">
-      ${t.logo_url ? `<img src="${t.logo_url}" class="w-10 h-10 rounded-xl object-cover" alt="logo" />` : `<div class="w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 grid place-items-center">${t.name[0]}</div>`}
-      <div class="font-medium">${t.name}</div>
+    <div class="relative p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 flex items-center gap-3 transition-all group" data-team-id="${t.id}" id="team-${t.id}">
+      ${t.logo_url ? `<img src="${t.logo_url}" class="w-10 h-10 rounded-xl object-cover" alt="logo" />` : `<div class=\"w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 grid place-items-center\">${t.name[0]}</div>`}
+      <div class="font-medium flex-1">${t.name}</div>
+      <div class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+        <button title="Modifier" data-action="edit-team" data-id="${t.id}" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 text-xs">Modifier</button>
+        <button title="Supprimer" data-action="delete-team" data-id="${t.id}" class="px-2 py-1 rounded-xl border border-red-300 dark:border-red-400 text-red-600 text-xs">Supprimer</button>
+      </div>
     </div>
   `).join('');
+
+  // Event delegation for edit/delete
+  list.onclick = async (e) => {
+    const editBtn = e.target.closest('[data-action="edit-team"]');
+    const delBtn = e.target.closest('[data-action="delete-team"]');
+    if (editBtn) {
+      const teamId = editBtn.getAttribute('data-id');
+      const { data: team, error } = await supabase.from('teams').select('*').eq('id', teamId).single();
+      if (error) { alert(error.message); return; }
+      const modal = document.getElementById('team-modal');
+      const form = document.getElementById('team-form');
+      form.setAttribute('data-edit-id', teamId);
+      form.querySelector('[name="name"]').value = team.name || '';
+      form.querySelector('[name="logo_url"]').value = team.logo_url || '';
+      modal.showModal();
+      return;
+    }
+    if (delBtn) {
+      const teamId = delBtn.getAttribute('data-id');
+      const ok = confirm('Confirmer la suppression de cette équipe ?');
+      if (!ok) return;
+      const { error } = await supabase.from('teams').delete().eq('id', teamId);
+      if (error) { alert(error.message); return; }
+      try { window.showToast && window.showToast('Équipe supprimée', { type: 'success' }); } catch {}
+      loadTeams(id);
+      return;
+    }
+  };
 
   if (highlightId) {
     const el = document.getElementById(`team-${highlightId}`);
