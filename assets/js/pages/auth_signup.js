@@ -39,6 +39,14 @@ export function onMountAuthSignup() {
   const resendBtn = document.getElementById('resend-email');
   const origin = (location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : 'http://localhost:5173';
 
+  // Preselect plan from query string if provided (e.g., #/auth/signup?plan=pro)
+  const qs = new URLSearchParams(location.hash.split('?')[1] || '');
+  const planFromQuery = qs.get('plan');
+  const planSelect = document.querySelector('select[name="plan"]');
+  if (planFromQuery && ['free','pro','club'].includes(planFromQuery)) {
+    planSelect.value = planFromQuery;
+  }
+
   document.getElementById('signup-btn')?.addEventListener('click', async (e) => {
     e.preventDefault();
     msg.textContent = '';
@@ -61,7 +69,12 @@ export function onMountAuthSignup() {
     if (error) { msg.textContent = error.message; return; }
 
     msg.textContent = 'Compte créé. Vérifiez votre e-mail pour confirmer, puis connectez-vous.';
-    // Optionnel: rediriger vers login
+    // Si plan payant, diriger vers la page de paiement simulé
+    if (plan !== 'free') {
+      setTimeout(() => { location.hash = `#/billing/checkout?plan=${plan}`; }, 600);
+      return;
+    }
+    // Sinon, rester sur le flux classique
     setTimeout(() => { location.hash = '#/auth/login'; }, 800);
   });
 
