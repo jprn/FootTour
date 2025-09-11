@@ -5,12 +5,11 @@ export default function TournamentsPage() {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-semibold">Mes tournois</h1>
-        <div id="quota-banner" class="hidden mt-2 text-sm px-3 py-2 rounded-2xl border border-primary/30 bg-primary/5 text-primary">
+        <div id="quota-banner" class="hidden opacity-0 mt-2 text-sm px-3 py-2 rounded-2xl border border-primary/30 bg-primary/5 text-primary transition-all duration-300">
           Limite du plan Free atteinte. <a href="#/billing/checkout?plan=pro" class="underline font-medium">Passer en Pro</a> pour créer d'autres tournois.
         </div>
         <div class="mt-1 text-sm text-gray-500 flex items-center gap-2">
           <span id="quota-indicator" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">—</span>
-          <a id="upgrade-inline" href="#/billing/checkout?plan=pro" class="hidden text-primary underline">Passer en Pro</a>
         </div>
       </div>
       <button id="new-tournament-btn" class="px-3 py-2 rounded-2xl bg-primary text-white">Nouveau tournoi</button>
@@ -94,10 +93,13 @@ export function onMountTournaments() {
       .eq('owner', uid);
 
     if ((profile?.plan ?? 'free') === 'free' && (count ?? 0) >= 1) {
-      // Show toast + reveal upgrade banner
+      // Show toast + reveal upgrade banner with animation
       try { window.showToast && window.showToast('Limite Free atteinte — passez en Pro pour créer plus de tournois.', { type: 'error' }); } catch {}
       const banner = document.getElementById('quota-banner');
-      banner?.classList.remove('hidden');
+      if (banner) {
+        banner.classList.remove('hidden');
+        requestAnimationFrame(() => banner.classList.remove('opacity-0'));
+      }
       return;
     }
 
@@ -129,15 +131,20 @@ export function onMountTournaments() {
       const msg = String(error.message || '').toLowerCase();
       const looksLikeRls = msg.includes('row-level security') || msg.includes('policy') || msg.includes('permission denied');
       if (looksLikeRls) {
-        // toast + show banner
+        // toast + show banner with animation
         try { window.showToast && window.showToast('Limite Free atteinte — passez en Pro pour créer plus de tournois.', { type: 'error' }); } catch {}
         const banner = document.getElementById('quota-banner');
-        banner?.classList.remove('hidden');
+        if (banner) {
+          banner.classList.remove('hidden');
+          requestAnimationFrame(() => banner.classList.remove('opacity-0'));
+        }
       } else {
         alert(error.message);
       }
       return;
     }
+    // Success: toast then navigate
+    try { window.showToast && window.showToast('Tournoi créé avec succès', { type: 'success' }); } catch {}
     modal.close();
     location.hash = `#/app/t/${data[0].id}`;
   });
@@ -173,7 +180,7 @@ async function loadTournaments() {
 
 async function updateQuotaIndicator() {
   const badge = document.getElementById('quota-indicator');
-  const upgrade = document.getElementById('upgrade-inline');
+  const banner = document.getElementById('quota-banner');
   if (!badge) return;
   const { data: session } = await supabase.auth.getSession();
   if (!session?.session) { badge.textContent = 'Non connecté'; return; }
@@ -185,12 +192,22 @@ async function updateQuotaIndicator() {
   const plan = prof?.plan || 'free';
   if (plan === 'free') {
     badge.textContent = `Free — ${Math.min(count ?? 0, 1)}/1 tournoi`;
-    upgrade?.classList.remove('hidden');
+    if ((count ?? 0) < 1 && banner) {
+      // hide banner if no longer at limit
+      banner.classList.add('opacity-0');
+      setTimeout(() => banner.classList.add('hidden'), 200);
+    }
   } else if (plan === 'pro' || plan === 'club') {
     badge.textContent = `${plan.toUpperCase()} — illimité`;
-    upgrade?.classList.add('hidden');
+    if (banner) {
+      banner.classList.add('opacity-0');
+      setTimeout(() => banner.classList.add('hidden'), 200);
+    }
   } else {
     badge.textContent = `${plan.toUpperCase()} — illimité`;
-    upgrade?.classList.add('hidden');
+    if (banner) {
+      banner.classList.add('opacity-0');
+      setTimeout(() => banner.classList.add('hidden'), 200);
+    }
   }
 }

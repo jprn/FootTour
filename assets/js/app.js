@@ -81,7 +81,11 @@ async function renderNav() {
       'border-gray-300 text-gray-600 dark:border-white/20'
     );
     const planBadge = `<a href="#/account/subscription" class="px-2 py-1 rounded-xl text-xs border ${badgeClass}">${plan.toUpperCase()}</a>`;
-    const upgradeCta = plan === 'free' ? `<a href="#/billing/checkout?plan=pro" class="hidden sm:inline px-3 py-1.5 rounded-xl bg-primary text-white">Passer en Pro</a>` : '';
+    const upgradeCta = (
+      plan === 'free' ? `<a href="#/billing/checkout?plan=pro" class="hidden sm:inline px-3 py-1.5 rounded-xl bg-primary text-white">Passer en Pro</a>` :
+      plan === 'pro'  ? `<a href="#/billing/checkout?plan=club" class="hidden sm:inline px-3 py-1.5 rounded-xl bg-primary text-white">Passer en Club</a>` :
+      ''
+    );
 
     nav.innerHTML = `
       <div class="flex items-center gap-2">
