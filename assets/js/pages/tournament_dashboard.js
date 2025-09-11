@@ -26,6 +26,8 @@ export default function TournamentDashboardPage({ id }) {
         <div id="tt-status" class="font-medium">Brouillon</div>
       </div>
     </section>
+
+    <section id="tt-groups" class="mt-8"></section>
   `;
 }
 
@@ -56,4 +58,32 @@ async function load(id) {
 
   const { count } = await supabase.from('teams').select('*', { count: 'exact', head: true }).eq('tournament_id', id);
   document.getElementById('tt-teams').textContent = String(count ?? 0);
+
+  // Render groups summary if any
+  const host = document.getElementById('tt-groups');
+  if (!host) return;
+  const { data: groups } = await supabase.from('groups').select('id, name').eq('tournament_id', id).order('name', { ascending: true });
+  if (!groups?.length) {
+    host.innerHTML = '';
+    return;
+  }
+  const { data: teams } = await supabase.from('teams').select('id, name, group_id').eq('tournament_id', id).order('name', { ascending: true });
+  const byGroup = Object.fromEntries(groups.map(g => [g.id, []]));
+  (teams||[]).forEach(tm => { if (byGroup[tm.group_id]) byGroup[tm.group_id].push(tm); });
+  host.innerHTML = `
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold">Poules</h2>
+      <a href="#/app/t/${id}/schedule" class="text-sm underline">Ouvrir le planning</a>
+    </div>
+    <div class="mt-3 grid md:grid-cols-3 gap-4">
+      ${groups.map(g => `
+        <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+          <div class="font-semibold">Poule ${g.name}</div>
+          <ul class="mt-2 space-y-1 text-sm">
+            ${(byGroup[g.id]||[]).map(tm => `<li>• ${tm.name}</li>`).join('') || '<li class="opacity-70">(aucune équipe)</li>'}
+          </ul>
+        </div>
+      `).join('')}
+    </div>
+  `;
 }

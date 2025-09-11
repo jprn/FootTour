@@ -74,6 +74,31 @@ alter table public.groups enable row level security;
 alter table public.teams enable row level security;
 alter table public.matches enable row level security;
 
+-- Matches policies (inherit from tournament owner)
+drop policy if exists "matches_owner_select" on public.matches;
+create policy "matches_owner_select" on public.matches
+for select using (
+  exists (select 1 from public.tournaments t where t.id = matches.tournament_id and t.owner = auth.uid())
+);
+
+drop policy if exists "matches_owner_insert" on public.matches;
+create policy "matches_owner_insert" on public.matches
+for insert with check (
+  exists (select 1 from public.tournaments t where t.id = matches.tournament_id and t.owner = auth.uid())
+);
+
+drop policy if exists "matches_owner_update" on public.matches;
+create policy "matches_owner_update" on public.matches
+for update using (
+  exists (select 1 from public.tournaments t where t.id = matches.tournament_id and t.owner = auth.uid())
+);
+
+drop policy if exists "matches_owner_delete" on public.matches;
+create policy "matches_owner_delete" on public.matches
+for delete using (
+  exists (select 1 from public.tournaments t where t.id = matches.tournament_id and t.owner = auth.uid())
+);
+
 -- Profiles policies
 drop policy if exists "read_own_profile" on public.profiles;
 create policy "read_own_profile" on public.profiles
