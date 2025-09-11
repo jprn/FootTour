@@ -107,6 +107,28 @@ async function renderNav() {
         <a href="#/auth/signup" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">Créer un compte</a>
       </div>`;
   }
+
+  // Update footer plan text
+  try {
+    const el = document.getElementById('footer-plan');
+    if (el) {
+      if (session?.session) {
+        const { data: prof } = await supabase.from('profiles').select('plan').eq('id', session.session.user.id).single();
+        const plan = prof?.plan || 'free';
+        if (plan === 'free') {
+          el.textContent = 'Plan Free: 1 tournoi, max 8 équipes. Passez en Pro pour plus de fonctionnalités.';
+        } else if (plan === 'pro') {
+          el.textContent = 'Plan Pro: tournois illimités, équipes illimitées, exports PDF/CSV, sans branding.';
+        } else if (plan === 'club') {
+          el.textContent = 'Plan Club: 99€/an — gestion de saison, multi-tournois, support prioritaire.';
+        } else {
+          el.textContent = `Plan ${plan.toUpperCase()}`;
+        }
+      } else {
+        el.textContent = 'Plan invité: créez un compte pour commencer (Free disponible).';
+      }
+    }
+  } catch {}
 }
 
 // Auth modal behavior (landing)
