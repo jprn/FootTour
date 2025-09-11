@@ -74,6 +74,47 @@ alter table public.groups enable row level security;
 alter table public.teams enable row level security;
 alter table public.matches enable row level security;
 
+-- Helper functions for RLS checks (avoid recursion in policies)
+create or replace function public.can_insert_tournament()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  with me as (
+    select plan from public.profiles where id = auth.uid()
+  ),
+  c as (
+    select count(*)::int as n from public.tournaments where owner = auth.uid()
+  )
+  select case
+    when (select plan from me) in ('pro','club') then true
+    when (select plan from me) = 'free' and (select n from c) < 1 then true
+    else false
+  end;
+$$;
+
+create or replace function public.can_insert_team(tid uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  with me as (
+    select plan from public.profiles where id = auth.uid()
+  ),
+  c as (
+    select count(*)::int as n from public.teams where tournament_id = tid
+  )
+  select case
+    when (select plan from me) in ('pro','club') then true
+    when (select plan from me) = 'free' and (select n from c) < 8 then true
+    else false
+  end;
+$$;
+
 -- Matches policies (inherit from tournament owner)
 drop policy if exists "matches_owner_select" on public.matches;
 create policy "matches_owner_select" on public.matches
@@ -119,22 +160,7 @@ drop policy if exists "owner_insert" on public.tournaments;
 drop policy if exists "owner_insert_with_plan_limit" on public.tournaments;
 create policy "owner_insert_with_plan_limit" on public.tournaments
 for insert with check (
-  -- must be the owner
-  owner = auth.uid()
-  and (
-    -- non-free plans: unlimited
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.plan in ('pro','club')
-    )
-    or (
-      -- free plan: limit to < 1 tournaments
-      exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'free')
-      and (
-        (select count(1) from public.tournaments t where t.owner = auth.uid()) < 1
-      )
-    )
-  )
+  owner = auth.uid() and public.can_insert_tournament()
 );
 drop policy if exists "owner_update" on public.tournaments;
 create policy "owner_update" on public.tournaments
@@ -169,17 +195,7 @@ drop policy if exists "teams_owner_insert_with_limit" on public.teams;
 create policy "teams_owner_insert_with_limit" on public.teams
 for insert with check (
   exists (select 1 from public.tournaments t where t.id = teams.tournament_id and t.owner = auth.uid())
-  and (
-    -- pro/club unlimited
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan in ('pro','club'))
-    or (
-      -- free limited to < 8 teams per tournament
-      exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'free')
-      and (
-        (select count(1) from public.teams tt where tt.tournament_id = teams.tournament_id) < 8
-      )
-    )
-  )
+  and public.can_insert_team(teams.tournament_id)
 );
 
 -- Update/Delete: owner of the parent tournament

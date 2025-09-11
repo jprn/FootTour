@@ -7,9 +7,9 @@ export default function SchedulePage({ id }) {
         <a href="#/app/t/${id}" class="text-sm text-gray-500">← Tableau de bord</a>
         <h1 class="text-2xl font-semibold mt-1">Planning</h1>
       </div>
-      <div class="flex gap-2">
-        <button id="gen-groups" class="hidden px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer poules</button>
-        <button id="gen-knockout" class="hidden px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer bracket</button>
+      <div class="flex gap-2 hidden">
+        <button id="gen-groups" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer poules</button>
+        <button id="gen-knockout" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer bracket</button>
       </div>
     </div>
 
@@ -93,8 +93,6 @@ function scrollToMatches() {
 
 async function init(id) {
   const info = document.getElementById('format-info');
-  const btnGroups = document.getElementById('gen-groups');
-  const btnKO = document.getElementById('gen-knockout');
 
   const { data: t, error } = await supabase.from('tournaments').select('*').eq('id', id).single();
   if (error) { info.textContent = error.message; return; }
@@ -102,9 +100,6 @@ async function init(id) {
   const { count: matchCount } = await supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
   if (t.format === 'groups_knockout') {
     info.textContent = 'Format: Poules + Phase finale';
-    btnGroups.classList.remove('hidden');
-    btnGroups.textContent = 'Générer poules (round robin)';
-    btnGroups.onclick = () => generateGroupRoundRobin(id);
 
     // Show groups summary
     await renderGroups(id);
@@ -124,34 +119,59 @@ async function init(id) {
     }
   } else {
     info.textContent = 'Format: Élimination directe';
-    btnKO.classList.remove('hidden');
-    btnKO.onclick = () => generateKnockout(id);
     if ((matchCount ?? 0) === 0) {
       await generateKnockout(id);
     }
   }
 
-  await loadMatches(id);
+  await renderMatchesByGroup(id);
 }
 
-async function loadMatches(id) {
+async function renderMatchesByGroup(tournamentId) {
   const list = document.getElementById('matches-list');
   list.innerHTML = '<div class="col-span-full text-sm opacity-70">Chargement…</div>';
-  const { data, error } = await supabase
+  // detect groups
+  const { data: groups } = await supabase.from('groups').select('id, name').eq('tournament_id', tournamentId).order('name', { ascending: true });
+  const { data: matches, error } = await supabase
     .from('matches')
-    .select('id, round, start_time, status, home:home_team_id(name), away:away_team_id(name)')
-    .eq('tournament_id', id)
-    .order('start_time', { ascending: true });
+    .select('id, group_id, round, start_time, status, home:home_team_id(name), away:away_team_id(name)')
+    .eq('tournament_id', tournamentId)
+    .order('round', { ascending: true });
   if (error) { list.innerHTML = `<div class=\"text-red-600\">${error.message}</div>`; return; }
-  if (!data?.length) { list.innerHTML = '<div class="opacity-70">Aucun match pour le moment.</div>'; return; }
+  if (!matches?.length) { list.innerHTML = '<div class="opacity-70">Aucun match pour le moment.</div>'; return; }
 
-  list.innerHTML = data.map(m => `
-    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
-      <div class="text-sm text-gray-500">${m.round || 'Match'}</div>
-      <div class="font-medium mt-1">${m.home?.name || '—'} vs ${m.away?.name || '—'}</div>
-      <div class="text-sm text-gray-500">${m.start_time ? new Date(m.start_time).toLocaleString() : ''} ${m.status ? '· ' + m.status : ''}</div>
-    </div>
-  `).join('');
+  if (groups?.length) {
+    const byGroup = Object.fromEntries(groups.map(g => [g.id, []]));
+    matches.forEach(m => { if (byGroup[m.group_id]) byGroup[m.group_id].push(m); });
+    list.innerHTML = groups.map(g => `
+      <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+        <div class="font-semibold">Poule ${g.name}</div>
+        <div class="mt-2 space-y-2">
+          ${(byGroup[g.id]||[]).map(m => `
+            <div class="text-sm">
+              <div class="font-medium">${m.home?.name || '—'} vs ${m.away?.name || '—'}</div>
+              <div class="text-gray-500">${m.round || ''} ${m.start_time ? '· ' + new Date(m.start_time).toLocaleString() : ''} ${m.status ? '· ' + m.status : ''}</div>
+            </div>
+          `).join('') || '<div class="text-sm opacity-70">Aucun match</div>'}
+        </div>
+      </div>
+    `).join('');
+  } else {
+    // knockout: render single card
+    list.innerHTML = `
+      <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+        <div class="font-semibold">Élimination directe</div>
+        <div class="mt-2 space-y-2">
+          ${matches.map(m => `
+            <div class="text-sm">
+              <div class="font-medium">${m.home?.name || '—'} vs ${m.away?.name || '—'}</div>
+              <div class="text-gray-500">${m.round || ''} ${m.start_time ? '· ' + new Date(m.start_time).toLocaleString() : ''} ${m.status ? '· ' + m.status : ''}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
 }
 
 async function generateGroupRoundRobin(tournamentId) {
