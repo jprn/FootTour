@@ -47,10 +47,22 @@ async function renderNav() {
   const { data: session } = await supabase.auth.getSession();
   if (session?.session) {
     const email = session.session.user?.email ?? '';
+    // Load user plan for badge
+    let plan = 'free';
+    try {
+      const { data: prof } = await supabase.from('profiles').select('plan').eq('id', session.session.user.id).single();
+      plan = prof?.plan || 'free';
+    } catch {}
+
+    const planBadge = `<span class="px-2 py-1 rounded-xl text-xs border ${plan==='free' ? 'border-gray-300 text-gray-600 dark:border-white/20' : 'border-success/40 text-success'}">${plan.toUpperCase()}</span>`;
+    const upgradeCta = plan === 'free' ? `<a href="#/billing/checkout?plan=pro" class="hidden sm:inline px-3 py-1.5 rounded-xl bg-primary text-white">Passer en Pro</a>` : '';
+
     nav.innerHTML = `
       <div class="flex items-center gap-2">
+        ${planBadge}
         <span class="hidden sm:inline text-sm text-gray-500">${email}</span>
         <a href="#/app/tournaments" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">Mes tournois</a>
+        ${upgradeCta}
         <button id="logout" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-black">Déconnexion</button>
       </div>`;
     document.getElementById('logout')?.addEventListener('click', async () => {
