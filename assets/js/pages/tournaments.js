@@ -162,6 +162,7 @@ export function onMountTournaments() {
   updateQuotaIndicator();
   // Refresh quota when plan/profile updates
   window.addEventListener('profile:updated', updateQuotaIndicator);
+  window.addEventListener('profile:updated', () => loadTournaments());
 }
 
 async function loadTournaments() {
@@ -170,7 +171,10 @@ async function loadTournaments() {
   const { data: user } = await supabase.auth.getUser();
   if (!user?.user) { list.innerHTML = '<div>Veuillez vous connecter.</div>'; return; }
 
-  const { data, error } = await supabase.from('tournaments').select('*').order('created_at', { ascending: false });
+  const [{ data, error }, { data: prof }] = await Promise.all([
+    supabase.from('tournaments').select('*').order('created_at', { ascending: false }),
+    supabase.from('profiles').select('plan').eq('id', user.user.id).single(),
+  ]);
   if (error) { list.innerHTML = `<div class="text-red-600">${error.message}</div>`; return; }
 
   if (!data?.length) {
@@ -178,19 +182,32 @@ async function loadTournaments() {
     return;
   }
 
-  list.innerHTML = data.map(t => `
+  // Determine accessibility for Free plan
+  const plan = prof?.plan || 'free';
+  let earliestId = null;
+  if (plan === 'free') {
+    const sorted = [...data].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    earliestId = sorted[0]?.id || null;
+  }
+
+  list.innerHTML = data.map(t => {
+    const disabled = plan === 'free' && earliestId && t.id !== earliestId;
+    const card = `
     <div class="relative group">
-      <a href="#/app/t/${t.id}" class="block p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:shadow-soft transition">
+      <a ${disabled ? 'aria-disabled="true"' : ''} href="${disabled ? '#' : `#/app/t/${t.id}` }" class="block p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 ${disabled ? 'opacity-60 pointer-events-none' : 'hover:shadow-soft'} bg-white/60 dark:bg-white/5 transition">
         <div class="text-sm uppercase tracking-wide text-gray-500">${t.sport}</div>
         <div class="mt-1 font-semibold">${t.name}</div>
         <div class="text-sm text-gray-500">${t.location || ''} ${t.dates ? '· ' + t.dates : ''}</div>
       </a>
+      ${disabled ? `<div class="absolute inset-0 rounded-2xl border border-primary/40 pointer-events-none"></div>
+        <div class="absolute bottom-2 right-2 text-xs px-2 py-1 rounded-xl bg-primary text-white">Débloquez avec Pro</div>` : ''}
       <button title="Supprimer" data-action="delete-tournament" data-id="${t.id}"
         class="opacity-0 group-hover:opacity-100 transition absolute top-2 right-2 px-2 py-1 rounded-xl border border-red-300 text-red-600 bg-white/80 dark:bg-white/10 dark:border-red-400 text-xs">
         Supprimer
       </button>
-    </div>
-  `).join('');
+    </div>`;
+    return card;
+  }).join('');
 
   // Delete handler (event delegation)
   list.addEventListener('click', async (e) => {
