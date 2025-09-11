@@ -1,0 +1,46 @@
+import { supabase } from '../supabaseClient.js';
+
+export default function AuthSignupPage() {
+  return `
+    <section class="max-w-md mx-auto">
+      <h1 class="text-2xl font-semibold">Créer un compte</h1>
+      <p class="text-sm text-gray-500 mt-1">Inscrivez-vous avec votre e-mail et un mot de passe.</p>
+
+      <form id="signup-form" class="mt-6 space-y-3">
+        <input type="email" name="email" placeholder="email@domaine.com" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+        <input type="password" name="password" placeholder="Mot de passe (min 6)" minlength="6" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+        <input type="password" name="passwordConfirm" placeholder="Confirmer le mot de passe" minlength="6" required class="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+        <button id="signup-btn" class="px-3 py-2 rounded-2xl bg-primary text-white w-full">S'inscrire</button>
+      </form>
+
+      <div class="mt-4 text-sm">
+        Déjà un compte ? <a href="#/auth/login" class="text-primary">Se connecter</a>
+      </div>
+
+      <div id="auth-msg" class="mt-4 text-sm"></div>
+    </section>
+  `;
+}
+
+export function onMountAuthSignup() {
+  const form = document.getElementById('signup-form');
+  const msg = document.getElementById('auth-msg');
+
+  document.getElementById('signup-btn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    const fd = new FormData(form);
+    const email = fd.get('email');
+    const password = fd.get('password');
+    const passwordConfirm = fd.get('passwordConfirm');
+    if (!email || !password) { msg.textContent = 'Veuillez saisir e-mail et mot de passe.'; return; }
+    if (password !== passwordConfirm) { msg.textContent = 'Les mots de passe ne correspondent pas.'; return; }
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) { msg.textContent = error.message; return; }
+
+    msg.textContent = 'Compte créé. Vérifiez votre e-mail pour confirmer, puis connectez-vous.';
+    // Optionnel: rediriger vers login
+    setTimeout(() => { location.hash = '#/auth/login'; }, 800);
+  });
+}

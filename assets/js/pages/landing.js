@@ -6,11 +6,56 @@ export default function LandingPage() {
       <p class="mt-3 text-gray-600 dark:text-gray-300">Créez un tournoi, ajoutez vos équipes, générez le planning et publiez une page publique. Football, basket, volley, handball, futsal.</p>
       <div class="mt-6 flex gap-3">
         <a href="#/app/tournaments" class="px-4 py-2 rounded-2xl bg-primary text-white shadow-soft">Ouvrir l'app</a>
-        <button id="login-btn" class="px-4 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Se connecter</button>
+        <a href="#/auth/login" class="px-4 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Se connecter</a>
       </div>
     </div>
     <div class="p-4 bg-white/60 dark:bg-white/5 rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-soft">
       <img src="https://images.unsplash.com/photo-1521417531039-94df5fbc7613?q=80&w=1200&auto=format&fit=crop" alt="tournoi" class="rounded-xl w-full h-64 object-cover" />
+    </div>
+  </section>
+
+  <section class="mt-16">
+    <h2 class="text-2xl font-semibold text-center">Choisissez votre plan</h2>
+    <p class="text-center text-gray-500 mt-1">Commencez gratuitement. Passez en Pro ou Club quand vous en avez besoin.</p>
+    <div class="mt-8 grid md:grid-cols-3 gap-4">
+      <!-- Free -->
+      <div class="p-6 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+        <div class="text-sm uppercase tracking-wide text-gray-500">Free</div>
+        <div class="mt-1 text-2xl font-semibold">0€</div>
+        <ul class="mt-4 space-y-2 text-sm">
+          <li>• 1 tournoi</li>
+          <li>• Jusqu'à 8 équipes</li>
+          <li>• Planning de base</li>
+          <li>• App mobile feuille de match</li>
+        </ul>
+        <a href="#/auth/signup" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Créer un compte</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="p-6 rounded-2xl border border-primary/30 bg-primary/5 dark:bg-primary/10 shadow-soft">
+        <div class="text-sm uppercase tracking-wide text-primary">Pro</div>
+        <div class="mt-1 text-2xl font-semibold">9€ / tournoi<br class="sm:hidden" /><span class="text-base font-normal text-gray-500">ou 12€/mois</span></div>
+        <ul class="mt-4 space-y-2 text-sm">
+          <li>• Tournois illimités</li>
+          <li>• Équipes illimitées</li>
+          <li>• Exports PDF/CSV</li>
+          <li>• Branding FootTour retiré</li>
+        </ul>
+        <a href="#/auth/signup" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl bg-primary text-white">Passer en Pro</a>
+      </div>
+
+      <!-- Club -->
+      <div class="p-6 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+        <div class="text-sm uppercase tracking-wide text-gray-500">Club</div>
+        <div class="mt-1 text-2xl font-semibold">99€ / an</div>
+        <ul class="mt-4 space-y-2 text-sm">
+          <li>• Gestion de saison</li>
+          <li>• Multiples tournois</li>
+          <li>• Support prioritaire</li>
+          <li>• Accès club staff</li>
+        </ul>
+        <a href="#/auth/signup" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Contacter le support</a>
+      </div>
     </div>
   </section>
 

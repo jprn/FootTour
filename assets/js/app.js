@@ -4,6 +4,8 @@ import LandingPage from './pages/landing.js';
 import TournamentsPage, { onMountTournaments } from './pages/tournaments.js';
 import TournamentDashboardPage, { onMountTournamentDashboard } from './pages/tournament_dashboard.js';
 import TeamsPage, { onMountTeams } from './pages/teams.js';
+import AuthLoginPage, { onMountAuthLogin } from './pages/auth_login.js';
+import AuthSignupPage, { onMountAuthSignup } from './pages/auth_signup.js';
 
 // Helper to register on-mount callbacks per page
 function onMount(fn) {
@@ -25,14 +27,24 @@ addRoute('/app/t/:id/teams', async ({ id }) => {
   onMount(() => onMountTeams({ id }));
   return TeamsPage({ id });
 });
+addRoute('/auth/login', async () => {
+  onMount(() => onMountAuthLogin());
+  return AuthLoginPage();
+});
+addRoute('/auth/signup', async () => {
+  onMount(() => onMountAuthSignup());
+  return AuthSignupPage();
+});
 
 // Auth UI and nav actions
 async function renderNav() {
   const nav = document.getElementById('nav-actions');
   const { data: session } = await supabase.auth.getSession();
   if (session?.session) {
+    const email = session.session.user?.email ?? '';
     nav.innerHTML = `
       <div class="flex items-center gap-2">
+        <span class="hidden sm:inline text-sm text-gray-500">${email}</span>
         <a href="#/app/tournaments" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">Mes tournois</a>
         <button id="logout" class="px-3 py-1.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-black">Déconnexion</button>
       </div>`;
@@ -42,11 +54,11 @@ async function renderNav() {
       navigate('#/');
     });
   } else {
-    nav.innerHTML = `<button id="open-login" class="px-3 py-1.5 rounded-xl bg-primary text-white">Se connecter</button>`;
-    document.getElementById('open-login')?.addEventListener('click', () => {
-      const modal = document.getElementById('auth-modal');
-      modal?.showModal();
-    });
+    nav.innerHTML = `
+      <div class="flex items-center gap-2">
+        <a href="#/auth/login" class="px-3 py-1.5 rounded-xl bg-primary text-white">Se connecter</a>
+        <a href="#/auth/signup" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20">Créer un compte</a>
+      </div>`;
   }
 }
 
