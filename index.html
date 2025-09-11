@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FootTour</title>
+    <meta name="description" content="Gestion de tournois multi-sport" />
+
+    <!-- Tailwind CSS via CDN for fast prototyping -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'media',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#3B82F6',
+              success: '#10B981',
+              dark: '#111827',
+            },
+            borderRadius: {
+              '2xl': '1rem',
+            },
+            boxShadow: {
+              soft: '0 10px 25px -10px rgba(0,0,0,0.25)'
+            }
+          }
+        }
+      }
+    </script>
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%233B82F6'/%3E%3Ctext x='50' y='58' text-anchor='middle' font-size='42' fill='white' font-family='Arial'%3EFT%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body class="bg-white text-gray-900 dark:bg-dark dark:text-gray-100 min-h-screen">
+    <!-- App Shell -->
+    <header class="sticky top-0 z-20 backdrop-blur bg-white/70 dark:bg-dark/70 border-b border-gray-200/60 dark:border-white/10">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <a href="#/" class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-2xl bg-primary text-white grid place-items-center font-bold shadow-soft">FT</div>
+          <span class="font-semibold">FootTour</span>
+        </a>
+        <nav id="nav-actions" class="flex items-center gap-2">
+          <!-- Filled by app.js based on auth state -->
+        </nav>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6" id="app"></main>
+
+    <footer class="max-w-6xl mx-auto px-4 py-10 text-sm text-gray-500">
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <p>© <span id="year"></span> FootTour. Construit avec Supabase.</p>
+        <p class="opacity-80">Plan Free: 1 tournoi, max 8 équipes. Passez en Pro pour plus de fonctionnalités.</p>
+      </div>
+    </footer>
+
+    <script type="module" src="./assets/js/app.js"></script>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>

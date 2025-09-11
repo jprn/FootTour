@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Node / tooling (future-proof)
+node_modules/
+.env
+.env.*
+
+# Build outputs (if added later)
+dist/
+build/
+.out/
