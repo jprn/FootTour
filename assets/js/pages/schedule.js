@@ -78,9 +78,17 @@ async function createRandomGroups(tournamentId) {
 
   try { window.showToast && window.showToast('Poules créées aléatoirement. Génération du calendrier…', { type: 'success' }); } catch {}
   await generateGroupRoundRobin(tournamentId);
+  try { window.showToast && window.showToast('Répartition rejouée. Génération du calendrier…', { type: 'success' }); } catch {}
+  await renderGroups(tournamentId);
 }
+
 export function onMountSchedule({ id }) {
   init(id);
+}
+
+function scrollToMatches() {
+  const el = document.getElementById('matches-list');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function init(id) {
@@ -173,7 +181,13 @@ async function generateGroupRoundRobin(tournamentId) {
   if (!toInsert.length) { alert('Pas assez d\'équipes dans les poules.'); return; }
   const { error } = await supabase.from('matches').insert(toInsert);
   if (error) { alert(error.message); return; }
-  try { window.showToast && window.showToast('Calendrier des poules généré', { type: 'success' }); } catch {}
+  try {
+    window.showToast && window.showToast('Calendrier des poules généré', {
+      type: 'success',
+      actionLabel: 'Voir les matchs',
+      onAction: () => scrollToMatches(),
+    });
+  } catch {}
   loadMatches(tournamentId);
 }
 
@@ -202,6 +216,12 @@ async function generateKnockout(tournamentId) {
   if (!firstRound.length) { alert('Impossible de générer le bracket.'); return; }
   const { error: insErr } = await supabase.from('matches').insert(firstRound);
   if (insErr) { alert(insErr.message); return; }
-  try { window.showToast && window.showToast('Bracket généré', { type: 'success' }); } catch {}
+  try {
+    window.showToast && window.showToast('Bracket généré', {
+      type: 'success',
+      actionLabel: 'Voir les matchs',
+      onAction: () => scrollToMatches(),
+    });
+  } catch {}
   loadMatches(tournamentId);
 }
