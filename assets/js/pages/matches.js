@@ -95,31 +95,19 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
 
   list.innerHTML = data.map(m => MatchCard(m, { lockGroup: hasKnockout && !!m.group_id })).join('');
 
-  // Event delegation for inline updates
-  list.addEventListener('input', (e) => {
-    const row = e.target.closest('[data-match-id]');
-    if (!row) return;
-    row.setAttribute('data-dirty', '1');
-    const saveBtn = row.querySelector('[data-action="save"]');
-    if (saveBtn) saveBtn.disabled = false;
-  }, { once: false });
-
+  // Event delegation for inline updates (auto-save)
   list.addEventListener('click', async (e) => {
     const row = e.target.closest('[data-match-id]');
     if (!row) return;
     const id = row.getAttribute('data-match-id');
 
-    if (e.target.matches('[data-action="save"]')) {
-      await saveRow(row, id);
-      return;
-    }
-
     if (e.target.matches('[data-action="status"]')) {
       const next = e.target.getAttribute('data-value');
-      row.querySelector('[name="status"]').value = next;
-      row.setAttribute('data-dirty', '1');
-      const saveBtn = row.querySelector('[data-action="save"]');
-      if (saveBtn) saveBtn.disabled = false;
+      const select = row.querySelector('[name="status"]');
+      if (select && !select.disabled) {
+        select.value = next;
+        await saveRow(row, id, { statusOnly: true });
+      }
       return;
     }
 
@@ -133,12 +121,22 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
       const cur = Number(input.value || '0');
       const next = incBtn ? (cur + 1) : Math.max(0, cur - 1);
       input.value = String(next);
-      row.setAttribute('data-dirty', '1');
-      const saveBtn = row.querySelector('[data-action="save"]');
-      if (saveBtn) saveBtn.disabled = false;
+      await saveRow(row, id, { scoresOnly: true });
       return;
     }
   }, { once: false });
+
+  // Change handlers: select status and manual score inputs -> auto-save
+  list.addEventListener('change', async (e) => {
+    const row = e.target.closest('[data-match-id]');
+    if (!row) return;
+    const id = row.getAttribute('data-match-id');
+    if (e.target.matches('[name="status"]')) {
+      await saveRow(row, id, { statusOnly: true });
+    } else if (e.target.matches('[name="home_score"], [name="away_score"]')) {
+      await saveRow(row, id, { scoresOnly: true });
+    }
+  });
 }
 
 function MatchCard(m, { lockGroup = false } = {}) {
@@ -177,9 +175,7 @@ function MatchCard(m, { lockGroup = false } = {}) {
             <button type="button" data-action="status" data-value="finished" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>✅</button>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button data-action="save" class="px-3 py-1.5 rounded-xl bg-primary text-white disabled:opacity-50" ${lockGroup ? 'disabled' : 'disabled'}>Enregistrer</button>
-        </div>
+        <div class="flex items-center gap-2"></div>
       </div>
       ${lockNote}
     </div>
@@ -203,19 +199,19 @@ function LabelStatus(s) {
   return 'Programmé';
 }
 
-async function saveRow(row, id) {
+async function saveRow(row, id, { statusOnly = false, scoresOnly = false } = {}) {
   const hs = row.querySelector('[name="home_score"]').value;
   const as = row.querySelector('[name="away_score"]').value;
   const st = row.querySelector('[name="status"]').value;
-  const payload = {
-    home_score: Number.isFinite(Number(hs)) && hs !== '' ? Number(hs) : null,
-    away_score: Number.isFinite(Number(as)) && as !== '' ? Number(as) : null,
-    status: st || 'scheduled',
-  };
+  const payload = {};
+  if (!statusOnly) {
+    payload.home_score = Number.isFinite(Number(hs)) && hs !== '' ? Number(hs) : null;
+    payload.away_score = Number.isFinite(Number(as)) && as !== '' ? Number(as) : null;
+  }
+  if (!scoresOnly) {
+    payload.status = st || 'scheduled';
+  }
   const { error } = await supabase.from('matches').update(payload).eq('id', id);
   if (error) { alert(error.message); return; }
-  row.removeAttribute('data-dirty');
-  const saveBtn = row.querySelector('[data-action="save"]');
-  if (saveBtn) saveBtn.disabled = true;
   try { window.showToast && window.showToast('Match mis à jour', { type: 'success' }); } catch {}
 }
