@@ -323,7 +323,7 @@ async function renderStandings(tournamentId) {
           <div class="font-semibold">${r}</div>
           <div class="mt-2 grid md:grid-cols-2 gap-3">
             ${(roundsMap[r]||[]).map(m => `
-              <div class="text-sm p-2 rounded-xl border border-gray-200/80 dark:border-white/10">
+              <div class="text-sm p-2 rounded-xl border ${m.status==='finished' ? 'border-red-300 bg-red-50/60 dark:border-red-500/60 dark:bg-red-900/10' : 'border-gray-200/80 dark:border-white/10'}">
                 <div class="flex items-center justify-between">
                   <span>${m.home?.name || '—'}</span>
                   <span class="font-semibold">${fmtScore(m.home_score, m.away_score)}</span>
