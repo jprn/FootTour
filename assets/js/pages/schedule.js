@@ -7,7 +7,7 @@ export default function SchedulePage({ id }) {
         <a href="#/app/t/${id}" class="text-sm text-gray-500">← Tableau de bord</a>
         <h1 class="text-2xl font-semibold mt-1">Planning</h1>
       </div>
-      <div class="flex gap-2">
+      <div id="schedule-actions" class="flex gap-2 items-center">
         <a href="#/app/t/${id}/standings" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Classement</a>
       </div>
     </div>
@@ -97,6 +97,31 @@ async function init(id) {
   if (error) { info.textContent = error.message; return; }
   // Check if matches already exist
   const { count: matchCount } = await supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
+  // Count groups to decide which actions to display
+  const { count: groupsCount } = await supabase.from('groups').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
+  const actions = document.getElementById('schedule-actions');
+  if (actions) {
+    // Clear previous dynamic buttons (keep first child which is the Classement link)
+    Array.from(actions.querySelectorAll('[data-dyn]')).forEach(n => n.remove());
+    if ((groupsCount ?? 0) === 0 && t.format === 'groups_knockout') {
+      const genBtn = document.createElement('button');
+      genBtn.setAttribute('data-dyn', '1');
+      genBtn.id = 'gen-groups-btn';
+      genBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      genBtn.textContent = 'Générer les poules';
+      genBtn.addEventListener('click', async () => { await createRandomGroups(id); });
+      actions.prepend(genBtn);
+    } else if ((groupsCount ?? 0) > 0) {
+      const regenBtn = document.createElement('button');
+      regenBtn.setAttribute('data-dyn', '1');
+      regenBtn.id = 'regen-groups-calendar-btn';
+      regenBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      regenBtn.textContent = 'Régénérer le calendrier';
+      regenBtn.title = 'Supprime les matchs de poule et recrée le calendrier';
+      regenBtn.addEventListener('click', async () => { await generateGroupRoundRobin(id); await renderMatchesByGroup(id); });
+      actions.prepend(regenBtn);
+    }
+  }
   if (t.format === 'groups_knockout') {
     info.textContent = 'Format: Poules + Phase finale';
 

@@ -94,7 +94,19 @@ async function load(id) {
       standingsLink.href = `#/app/t/${id}/standings`;
       standingsLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
       standingsLink.textContent = 'Classement';
+      const regenBtn = document.createElement('button');
+      regenBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      regenBtn.textContent = 'Régénérer le calendrier';
+      regenBtn.title = 'Supprime les matchs de poule et recrée le calendrier';
+      regenBtn.addEventListener('click', async () => {
+        const ok = confirm('Régénérer le calendrier des poules ? Les matchs de poule existants seront supprimés.');
+        if (!ok) return;
+        await regenerateGroupCalendar(id);
+        try { window.showToast && window.showToast('Calendrier des poules régénéré', { type: 'success' }); } catch {}
+        location.hash = `#/app/t/${id}/schedule`;
+      });
       actions?.prepend(standingsLink);
+      actions?.prepend(regenBtn);
       actions?.prepend(planningLink);
     }
   }
