@@ -72,17 +72,8 @@ async function generateKnockoutFromStandings(tournamentId, groups, perGroupTable
 }
 
 export function onMountStandings({ id }) {
-  // Initial render
+  // Calcul du classement à l'ouverture de la page uniquement
   renderStandings(id);
-  // Poll every 4s for live updates
-  const intervalId = setInterval(() => renderStandings(id), 4000);
-  // Cleanup when navigating away from this standings page
-  const cleanup = () => { clearInterval(intervalId); window.removeEventListener('hashchange', onHashChange); };
-  const onHashChange = () => {
-    const expected = `#/app/t/${id}/standings`;
-    if (location.hash !== expected) cleanup();
-  };
-  window.addEventListener('hashchange', onHashChange);
 }
 
 async function renderStandings(tournamentId) {
