@@ -190,28 +190,27 @@ async function renderStandings(tournamentId) {
           const ctaHost = document.getElementById('ko-cta');
           if (ctaHost) {
             ctaHost.classList.remove('hidden');
-            // Build CTAs conditionally (finale and petite finale)
-            const parts = [];
-            parts.push(`<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la finale</button>`);
-            // Show Petite Finale CTA only if we have two losers and no existing petite finale
-            const hasPetiteFinale = (koAll||[]).some(m => String(m.round||'').toLowerCase().includes('petite'));
-            if (losers.length === 2 && !hasPetiteFinale) {
-              parts.push(`<button id=\"gen-small-final\" class=\"px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20\">Générer la petite finale</button>`);
+            // Politique demandée:
+            // 1) Après le premier tour KO terminé: afficher UNIQUEMENT "Générer la petite finale" (si pas encore créée)
+            // 2) Quand la petite finale est terminée: afficher UNIQUEMENT "Générer la finale"
+            const hasPetiteFinale = (koAll||[]).some(m => /petite/i.test(String(m.round||'')));
+            const petiteFinaleFinished = (koAll||[]).some(m => /petite/i.test(String(m.round||'')) && m.status === 'finished');
+
+            // Décider quel bouton afficher
+            let html = '';
+            if (!hasPetiteFinale && losers.length === 2) {
+              // Étape 1: proposer la petite finale seulement
+              html = `<button id=\"gen-small-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la petite finale</button>`;
+            } else if (petiteFinaleFinished) {
+              // Étape 2: petite finale terminée -> proposer la finale seulement
+              html = `<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la finale</button>`;
+            } else {
+              // Sinon, ne rien proposer (ou afficher un bouton désactivé si souhaité)
+              html = '';
             }
-            ctaHost.innerHTML = parts.join('\n');
-            document.getElementById('gen-final')?.addEventListener('click', async () => {
-              const toInsert = [{
-                tournament_id: tournamentId,
-                round: 'Finale',
-                home_team_id: winners[0].id,
-                away_team_id: winners[1].id,
-                status: 'scheduled',
-              }];
-              const { error } = await supabase.from('matches').insert(toInsert);
-              if (error) { alert(error.message); return; }
-              try { window.showToast && window.showToast('Finale générée', { type: 'success' }); } catch {}
-              location.hash = `#/app/t/${tournamentId}/matches`;
-            });
+            ctaHost.innerHTML = html;
+
+            // Bind actions selon le bouton visible
             document.getElementById('gen-small-final')?.addEventListener('click', async () => {
               const toInsert = [{
                 tournament_id: tournamentId,
@@ -223,6 +222,20 @@ async function renderStandings(tournamentId) {
               const { error } = await supabase.from('matches').insert(toInsert);
               if (error) { alert(error.message); return; }
               try { window.showToast && window.showToast('Petite finale générée', { type: 'success' }); } catch {}
+              location.hash = `#/app/t/${tournamentId}/matches`;
+            });
+
+            document.getElementById('gen-final')?.addEventListener('click', async () => {
+              const toInsert = [{
+                tournament_id: tournamentId,
+                round: 'Finale',
+                home_team_id: winners[0].id,
+                away_team_id: winners[1].id,
+                status: 'scheduled',
+              }];
+              const { error } = await supabase.from('matches').insert(toInsert);
+              if (error) { alert(error.message); return; }
+              try { window.showToast && window.showToast('Finale générée', { type: 'success' }); } catch {}
               location.hash = `#/app/t/${tournamentId}/matches`;
             });
           }
