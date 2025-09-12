@@ -20,6 +20,54 @@ export default function StandingsPage({ id }) {
   `;
 }
 
+// Simple canvas confetti (vanilla) — one-shot
+function launchConfetti({ particles = 120, duration = 1500 } = {}) {
+  try {
+    // Remove existing canvas if any
+    document.getElementById('ft-confetti')?.remove();
+    const canvas = document.createElement('canvas');
+    canvas.id = 'ft-confetti';
+    canvas.style.cssText = 'position:fixed;inset:0;z-index:1000;pointer-events:none';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    resize();
+    window.addEventListener('resize', resize, { once: true });
+
+    const colors = ['#F59E0B','#10B981','#3B82F6','#EF4444','#A855F7','#F97316'];
+    const pieces = Array.from({ length: particles }).map(() => ({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * 40,
+      r: 4 + Math.random() * 6,
+      vx: -2 + Math.random() * 4,
+      vy: 2 + Math.random() * 3,
+      a: Math.random() * Math.PI * 2,
+      va: -0.1 + Math.random() * 0.2,
+      c: colors[Math.floor(Math.random()*colors.length)],
+    }));
+    const start = performance.now();
+    function step(t) {
+      const elapsed = t - start;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (const p of pieces) {
+        p.x += p.vx; p.y += p.vy; p.a += p.va;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.a);
+        ctx.fillStyle = p.c;
+        ctx.globalAlpha = Math.max(0, 1 - elapsed / duration);
+        ctx.fillRect(-p.r, -p.r, p.r*2, p.r*2);
+        ctx.restore();
+      }
+      if (elapsed < duration) requestAnimationFrame(step);
+      else {
+        canvas.remove();
+      }
+    }
+    requestAnimationFrame(step);
+  } catch {}
+}
+
 function computeRoundLabel(n) {
   if (n >= 16) return '1/8 de finale';
   if (n >= 8) return '1/4 de finale';
@@ -202,8 +250,8 @@ async function renderStandings(tournamentId) {
               // Étape 1: proposer la petite finale seulement
               html = `<button id=\"gen-small-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la petite finale</button>`;
             } else if (petiteFinaleFinished) {
-              // Étape 2: petite finale terminée -> proposer la finale seulement
-              html = `<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la finale</button>`;
+              // Étape 2: petite finale terminée -> proposer la finale seulement (libellé demandé)
+              html = `<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Lancer la phase finale</button>`;
             } else {
               // Sinon, ne rien proposer (ou afficher un bouton désactivé si souhaité)
               html = '';
@@ -324,8 +372,8 @@ async function renderStandings(tournamentId) {
             <div class="mt-3 grid grid-cols-3 gap-3 items-end">
               <div class="col-span-1 text-center" style="animation: ft-fade-up .5s ease-out .1s both;">
                 <div class="text-sm opacity-70">2e</div>
-                <div class="px-3 py-2 rounded-xl border border-gray-200/80 dark:border-white/10">${second?.name || '—'}</div>
-                <div class="h-16 mt-2 rounded-t-xl bg-gray-200 dark:bg-white/10"></div>
+                <div class="px-3 py-2 rounded-xl border border-slate-300 bg-slate-50/70 dark:bg-white/10">${second?.name || '—'}</div>
+                <div class="h-16 mt-2 rounded-t-xl bg-slate-300/70 dark:bg-slate-500/40"></div>
               </div>
               <div class="col-span-1 text-center" style="animation: ft-fade-up .5s ease-out .2s both;">
                 <div class="text-sm opacity-70">1er</div>
@@ -334,8 +382,8 @@ async function renderStandings(tournamentId) {
               </div>
               <div class="col-span-1 text-center" style="animation: ft-fade-up .5s ease-out .3s both;">
                 <div class="text-sm opacity-70">3e</div>
-                <div class="px-3 py-2 rounded-xl border border-gray-200/80 dark:border-white/10">${third?.name || '—'}</div>
-                <div class="h-12 mt-2 rounded-t-xl bg-gray-200 dark:bg-white/10"></div>
+                <div class="px-3 py-2 rounded-xl border border-orange-300 bg-orange-50/70 dark:bg-orange-900/10">${third?.name || '—'}</div>
+                <div class="h-12 mt-2 rounded-t-xl bg-orange-300/60 dark:bg-orange-500/40"></div>
               </div>
             </div>
             <div class="mt-3 text-center" style="animation: ft-fade-up .5s ease-out .4s both;">
@@ -343,9 +391,19 @@ async function renderStandings(tournamentId) {
                 <span class="opacity-70">4e</span>
                 <span class="font-medium">${fourth?.name || '—'}</span>
               </div>
+              <div class="mt-3">
+                <button id="ft-replay-confetti" class="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/20 text-sm">🎉 Rejouer l'animation</button>
+              </div>
             </div>
           `;
           bracketHost.parentElement?.insertBefore(card, bracketHost.nextSibling);
+
+          // Confetti one-shot
+          try {
+            launchConfetti();
+          } catch {}
+          // Bind replay
+          document.getElementById('ft-replay-confetti')?.addEventListener('click', () => { try { launchConfetti({ particles: 180, duration: 1800 }); } catch {} });
         }
       }
     } catch {}
