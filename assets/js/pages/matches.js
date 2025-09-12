@@ -123,6 +123,12 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
       // Also disable status buttons if finished
       if (next === 'finished') {
         row.querySelectorAll('[data-action="status"]').forEach(btn => btn.setAttribute('disabled', ''));
+        // If this is the Final (not Petite finale), redirect to standings to show podium
+        const round = (row.getAttribute('data-round') || '').toLowerCase();
+        if (round.includes('finale') && !round.includes('petite')) {
+          try { window.showToast && window.showToast('Finale terminée — affichage du podium', { type: 'success' }); } catch {}
+          setTimeout(() => { location.hash = `#/app/t/${tournamentId}/standings`; }, 250);
+        }
       }
       return;
     }
@@ -161,7 +167,7 @@ function MatchCard(m, { lockGroup = false } = {}) {
   const disabled = lockGroup ? 'disabled' : '';
   const lockNote = lockGroup ? '<div class="text-xs text-amber-600 mt-1">Verrouillé: la phase finale est lancée</div>' : '';
   return `
-    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5" data-match-id="${m.id}" data-lock-group="${lockGroup ? '1' : '0'}">
+    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5" data-match-id="${m.id}" data-lock-group="${lockGroup ? '1' : '0'}" data-round="${m.round || ''}">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-500">${m.round || (m.group_id ? 'Poule' : 'Match')}</div>
         <span data-role="status-badge">${statusBadge}</span>
