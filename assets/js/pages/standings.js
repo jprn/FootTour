@@ -225,17 +225,18 @@ async function renderStandings(tournamentId) {
     .is('group_id', null);
   const hasKO = Array.isArray(koAll) && koAll.length > 0;
   if (hasKO) {
-    const hasFinal = (koAll||[]).some(m => {
-      const r = String(m.round||'').toLowerCase();
-      return r.includes('finale') && !r.includes('demi') && !r.includes('petite');
-    });
+    const isTrueFinal = (label) => {
+      const r = String(label||'').toLowerCase();
+      return r.includes('finale') && !r.includes('1/') && !r.includes('demi') && !r.includes('petite');
+    };
+    const hasFinal = (koAll||[]).some(m => isTrueFinal(m.round));
     if (!hasFinal) {
       const finishedKo = (koAll||[]).filter(m => m.status === 'finished');
       // On cible UNIQUEMENT le round avec exactement 2 matchs terminés (démis)
       const perRound = {};
       finishedKo.forEach(m => {
         const r = String(m.round||'');
-        if (r.toLowerCase().includes('finale') && !r.toLowerCase().includes('demi')) return; // exclure la vraie Finale
+        if (isTrueFinal(r)) return; // exclure la vraie Finale
         perRound[r] = (perRound[r]||0) + 1;
       });
       const semiEntry = Object.entries(perRound).find(([,c]) => c === 2);

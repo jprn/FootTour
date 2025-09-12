@@ -107,6 +107,19 @@ async function init(id) {
     .eq('tournament_id', id)
     .not('group_id', 'is', null)
     .in('status', ['live','finished']);
+  // Check if KO already has Petite finale or Finale (to lock regen UX globally)
+  let hasBlockingKO = false;
+  try {
+    const { data: koRounds } = await supabase
+      .from('matches')
+      .select('round, group_id')
+      .eq('tournament_id', id)
+      .is('group_id', null);
+    hasBlockingKO = (koRounds||[]).some(m => {
+      const r = String(m.round||'').toLowerCase();
+      return r.includes('petite') || (r.includes('finale') && !r.includes('demi'));
+    });
+  } catch {}
   const actions = document.getElementById('schedule-actions');
   if (actions) {
     // Clear previous dynamic buttons (keep first child which is the Classement link)
@@ -126,12 +139,14 @@ async function init(id) {
       regenBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
       regenBtn.textContent = 'Régénérer le calendrier';
       const isLocked = (lockedCount ?? 0) > 0;
-      regenBtn.title = isLocked
-        ? 'Indisponible: au moins un match de poule est En direct ou Terminé'
-        : 'Supprime les matchs de poule et recrée le calendrier';
-      if (isLocked) {
+      if (hasBlockingKO) {
+        regenBtn.title = 'Indisponible: Petite finale ou Finale existante — régénération bloquée';
+        regenBtn.disabled = true;
+      } else if (isLocked) {
+        regenBtn.title = 'Indisponible: au moins un match de poule est En direct ou Terminé';
         regenBtn.disabled = true;
       } else {
+        regenBtn.title = 'Supprime les matchs de poule et recrée le calendrier';
         regenBtn.addEventListener('click', async () => { await generateGroupRoundRobin(id); await renderMatchesByGroup(id); });
       }
       actions.prepend(regenBtn);
