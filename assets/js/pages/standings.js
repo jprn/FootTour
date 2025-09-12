@@ -301,13 +301,49 @@ async function renderStandings(tournamentId) {
           }
         }
         if (rank.length) {
+          // Inject minimal CSS once for podium animation
+          try {
+            if (!document.getElementById('ft-podium-css')) {
+              const style = document.createElement('style');
+              style.id = 'ft-podium-css';
+              style.textContent = `
+                @keyframes ft-fade-up { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+              `;
+              document.head.appendChild(style);
+            }
+          } catch {}
+
           const card = document.createElement('div');
           card.className = 'mt-4 p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5';
+          const first = rank.find(r => r.pos === 1);
+          const second = rank.find(r => r.pos === 2);
+          const third = rank.find(r => r.pos === 3);
+          const fourth = rank.find(r => r.pos === 4);
           card.innerHTML = `
             <div class="font-semibold">Classement final</div>
-            <ol class="mt-2 space-y-1 text-sm">
-              ${rank.map(r => `<li><span class="font-semibold">${r.pos}.</span> ${r.name}</li>`).join('')}
-            </ol>
+            <div class="mt-3 grid grid-cols-3 gap-3 items-end">
+              <div class="col-span-1 text-center" style="animation: ft-fade-up .5s ease-out .1s both;">
+                <div class="text-sm opacity-70">2e</div>
+                <div class="px-3 py-2 rounded-xl border border-gray-200/80 dark:border-white/10">${second?.name || '—'}</div>
+                <div class="h-16 mt-2 rounded-t-xl bg-gray-200 dark:bg-white/10"></div>
+              </div>
+              <div class="col-span-1 text-center" style="animation: ft-fade-up .5s ease-out .2s both;">
+                <div class="text-sm opacity-70">1er</div>
+                <div class="px-3 py-2 rounded-xl border-2 border-amber-400 bg-amber-50/70 dark:bg-amber-900/10">${first?.name || '—'}</div>
+                <div class="h-24 mt-2 rounded-t-xl bg-amber-300/60 dark:bg-amber-500/40"></div>
+              </div>
+              <div class="col-span-1 text-center" style="animation: ft-fade-up .5s ease-out .3s both;">
+                <div class="text-sm opacity-70">3e</div>
+                <div class="px-3 py-2 rounded-xl border border-gray-200/80 dark:border-white/10">${third?.name || '—'}</div>
+                <div class="h-12 mt-2 rounded-t-xl bg-gray-200 dark:bg-white/10"></div>
+              </div>
+            </div>
+            <div class="mt-3 text-center" style="animation: ft-fade-up .5s ease-out .4s both;">
+              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-white/10 text-sm">
+                <span class="opacity-70">4e</span>
+                <span class="font-medium">${fourth?.name || '—'}</span>
+              </div>
+            </div>
           `;
           bracketHost.parentElement?.insertBefore(card, bracketHost.nextSibling);
         }
