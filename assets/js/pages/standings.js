@@ -114,15 +114,19 @@ async function renderStandings(tournamentId) {
 
   host.innerHTML = cards;
 
-  // If tournament is groups_knockout and all group matches are finished, show CTA to generate knockout
-  const allGroupMatches = (matches||[]).filter(m => m.group_id);
-  const allFinished = allGroupMatches.length > 0 && allGroupMatches.every(m => m.status === 'finished');
+  // If tournament is groups_knockout and ALL matches (of the tournament) are finished, show CTA to generate knockout
   const isGroupsFormat = (tinfo?.format || 'groups_knockout') === 'groups_knockout';
+  const [{ count: totalMatches }, { count: finishedMatches }] = await Promise.all([
+    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId),
+    supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', tournamentId).eq('status', 'finished'),
+  ]);
+  const allFinished = (totalMatches ?? 0) > 0 && (finishedMatches ?? 0) === (totalMatches ?? 0);
+  const remaining = Math.max(0, (totalMatches ?? 0) - (finishedMatches ?? 0));
   if (isGroupsFormat && allFinished) {
     const ctaHost = document.getElementById('ko-cta');
     if (ctaHost) {
       ctaHost.classList.remove('hidden');
-      ctaHost.innerHTML = `<button id="gen-ko" class="px-3 py-2 rounded-2xl bg-primary text-white">Lancer les phases finales</button>`;
+      ctaHost.innerHTML = `<button id=\"gen-ko\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Lancer les phases finales</button>`;
       document.getElementById('gen-ko')?.addEventListener('click', async () => {
         // Determine how many can qualify per group (2 or 4) depending on group sizes
         const groupSizes = groups.map(g => (perGroupTables[g.id] || []).length);
@@ -134,6 +138,17 @@ async function renderStandings(tournamentId) {
         if (!options.includes(k)) { alert('Nombre de qualifiés invalide.'); return; }
         await generateKnockoutFromStandings(tournamentId, groups, perGroupTables, k);
       });
+    }
+  } else if (isGroupsFormat && (totalMatches ?? 0) > 0) {
+    const ctaHost = document.getElementById('ko-cta');
+    if (ctaHost) {
+      ctaHost.classList.remove('hidden');
+      ctaHost.innerHTML = `
+        <span class=\"text-sm px-3 py-2 rounded-2xl border border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-200\">
+          ${remaining} match(s) restant(s) à clôturer avant de lancer la phase finale — 
+          <a href=\"#/app/t/${tournamentId}/matches\" class=\"underline\">ouvrir les matchs</a>
+        </span>
+      `;
     }
   }
 }

@@ -8,6 +8,7 @@ export default function SchedulePage({ id }) {
         <h1 class="text-2xl font-semibold mt-1">Planning</h1>
       </div>
       <div id="schedule-actions" class="flex gap-2 items-center">
+        <a href="#/app/t/${id}/matches" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Matchs</a>
         <a href="#/app/t/${id}/standings" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Classement</a>
       </div>
     </div>
@@ -99,6 +100,13 @@ async function init(id) {
   const { count: matchCount } = await supabase.from('matches').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
   // Count groups to decide which actions to display
   const { count: groupsCount } = await supabase.from('groups').select('id', { count: 'exact', head: true }).eq('tournament_id', id);
+  // Check if any group match is already LIVE or FINISHED (to lock regen)
+  const { count: lockedCount } = await supabase
+    .from('matches')
+    .select('id', { count: 'exact', head: true })
+    .eq('tournament_id', id)
+    .not('group_id', 'is', null)
+    .in('status', ['live','finished']);
   const actions = document.getElementById('schedule-actions');
   if (actions) {
     // Clear previous dynamic buttons (keep first child which is the Classement link)
@@ -117,8 +125,15 @@ async function init(id) {
       regenBtn.id = 'regen-groups-calendar-btn';
       regenBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
       regenBtn.textContent = 'Régénérer le calendrier';
-      regenBtn.title = 'Supprime les matchs de poule et recrée le calendrier';
-      regenBtn.addEventListener('click', async () => { await generateGroupRoundRobin(id); await renderMatchesByGroup(id); });
+      const isLocked = (lockedCount ?? 0) > 0;
+      regenBtn.title = isLocked
+        ? 'Indisponible: au moins un match de poule est En direct ou Terminé'
+        : 'Supprime les matchs de poule et recrée le calendrier';
+      if (isLocked) {
+        regenBtn.disabled = true;
+      } else {
+        regenBtn.addEventListener('click', async () => { await generateGroupRoundRobin(id); await renderMatchesByGroup(id); });
+      }
       actions.prepend(regenBtn);
     }
   }

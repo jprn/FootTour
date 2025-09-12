@@ -104,10 +104,13 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
 
     if (e.target.matches('[data-action="status"]')) {
       const next = e.target.getAttribute('data-value');
-      const select = row.querySelector('[name="status"]');
-      if (select && !select.disabled) {
-        select.value = next;
-        await saveRow(row, id, { statusOnly: true });
+      const disabled = e.target.hasAttribute('disabled');
+      if (disabled) return;
+      // Persist and update badge immediately
+      await saveRow(row, id, { statusOnly: true, setStatus: next });
+      const badgeHost = row.querySelector('[data-role="status-badge"]');
+      if (badgeHost) {
+        badgeHost.innerHTML = StatusBadge(next);
       }
       return;
     }
@@ -127,14 +130,12 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
     }
   }, { once: false });
 
-  // Change handlers: select status and manual score inputs -> auto-save
+  // Change handlers: manual score inputs -> auto-save
   list.addEventListener('change', async (e) => {
     const row = e.target.closest('[data-match-id]');
     if (!row) return;
     const id = row.getAttribute('data-match-id');
-    if (e.target.matches('[name="status"]')) {
-      await saveRow(row, id, { statusOnly: true });
-    } else if (e.target.matches('[name="home_score"], [name="away_score"]')) {
+    if (e.target.matches('[name="home_score"], [name="away_score"]')) {
       await saveRow(row, id, { scoresOnly: true });
     }
   });
@@ -149,7 +150,7 @@ function MatchCard(m, { lockGroup = false } = {}) {
     <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5" data-match-id="${m.id}">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-500">${m.round || (m.group_id ? 'Poule' : 'Match')}</div>
-        ${statusBadge}
+        <span data-role="status-badge">${statusBadge}</span>
       </div>
       <div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div class="truncate font-medium">${m.home?.name || '—'}</div>
@@ -166,10 +167,7 @@ function MatchCard(m, { lockGroup = false } = {}) {
       </div>
       <div class="mt-3 flex items-center justify-between gap-2 text-sm">
         <div class="flex items-center gap-2">
-          <label class="opacity-70">Statut</label>
-          <select name="status" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" ${disabled}>
-            ${statusOptions.map(s => `<option value="${s}" ${m.status===s?'selected':''}>${LabelStatus(s)}</option>`).join('')}
-          </select>
+          <span class="opacity-70">Statut</span>
           <div class="flex items-center gap-1">
             <button type="button" data-action="status" data-value="scheduled" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>⏳</button>
             <button type="button" data-action="status" data-value="live" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>🔴</button>
@@ -200,17 +198,17 @@ function LabelStatus(s) {
   return 'Programmé';
 }
 
-async function saveRow(row, id, { statusOnly = false, scoresOnly = false } = {}) {
+async function saveRow(row, id, { statusOnly = false, scoresOnly = false, setStatus } = {}) {
   const hs = row.querySelector('[name="home_score"]').value;
   const as = row.querySelector('[name="away_score"]').value;
-  const st = row.querySelector('[name="status"]').value;
+  const st = setStatus ?? row.querySelector('[name="status"]')?.value ?? null;
   const payload = {};
   if (!statusOnly) {
     payload.home_score = Number.isFinite(Number(hs)) && hs !== '' ? Number(hs) : null;
     payload.away_score = Number.isFinite(Number(as)) && as !== '' ? Number(as) : null;
   }
   if (!scoresOnly) {
-    payload.status = st || 'scheduled';
+    payload.status = (setStatus ?? st ?? 'scheduled');
   }
   const { error } = await supabase.from('matches').update(payload).eq('id', id);
   if (error) { alert(error.message); return; }
