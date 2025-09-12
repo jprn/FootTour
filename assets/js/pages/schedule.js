@@ -175,6 +175,16 @@ async function generateGroupRoundRobin(tournamentId) {
   if (gErr) { alert(gErr.message); return; }
   if (!groups?.length) { alert('Aucune poule. Créez d\'abord des poules et des équipes.'); return; }
 
+  // Clear existing group matches for this tournament to avoid duplicates
+  {
+    const { error: delErr } = await supabase
+      .from('matches')
+      .delete()
+      .eq('tournament_id', tournamentId)
+      .not('group_id', 'is', null);
+    if (delErr) { alert(delErr.message); return; }
+  }
+
   let toInsert = [];
   for (const g of groups) {
     const { data: teams, error: tErr } = await supabase.from('teams').select('id, name').eq('group_id', g.id).order('created_at', { ascending: true });
@@ -213,6 +223,24 @@ async function generateKnockout(tournamentId) {
   if (error) { alert(error.message); return; }
   const n = teams.length;
   if (n < 2) { alert('Pas assez d\'équipes pour générer un bracket.'); return; }
+  // If knockout matches already exist, confirm replacement and clear them
+  {
+    const { count } = await supabase
+      .from('matches')
+      .select('id', { count: 'exact', head: true })
+      .eq('tournament_id', tournamentId)
+      .is('group_id', null);
+    if ((count ?? 0) > 0) {
+      const ok = confirm('Des matchs de phase finale existent déjà. Voulez-vous les remplacer ?');
+      if (!ok) return;
+      const { error: delErr } = await supabase
+        .from('matches')
+        .delete()
+        .eq('tournament_id', tournamentId)
+        .is('group_id', null);
+      if (delErr) { alert(delErr.message); return; }
+    }
+  }
   // Determine nearest power of 2 and create first round pairings
   const pow2 = 1 << Math.floor(Math.log2(n));
   const firstRound = [];
