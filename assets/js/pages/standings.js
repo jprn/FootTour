@@ -42,6 +42,94 @@ async function generateKnockoutFromStandings(tournamentId, groups, perGroupTable
       const teamRow = qualifiersPerGroup[gi][r];
       if (teamRow) seeds.push(teamRow);
     }
+
+  // Render bracket view if knockout exists
+  if (hasKO) {
+    const bracketHost = document.createElement('div');
+    bracketHost.className = 'space-y-4';
+    const title = document.createElement('h2');
+    title.className = 'text-xl font-semibold mt-6';
+    title.textContent = 'Phase finale';
+    host.parentElement?.insertBefore(title, host.nextSibling);
+    host.parentElement?.insertBefore(bracketHost, title.nextSibling);
+
+    const roundsMap = {};
+    (koAll||[]).forEach(m => {
+      const r = String(m.round || 'Phase finale');
+      roundsMap[r] = roundsMap[r] || [];
+      roundsMap[r].push(m);
+    });
+    const order = Object.keys(roundsMap).sort((a,b) => rankRound(a) - rankRound(b));
+    bracketHost.innerHTML = order.map(r => `
+      <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+        <div class="font-semibold">${r}</div>
+        <div class="mt-2 grid md:grid-cols-2 gap-3">
+          ${(roundsMap[r]||[]).map(m => `
+            <div class="text-sm p-2 rounded-xl border border-gray-200/80 dark:border-white/10">
+              <div class="flex items-center justify-between">
+                <span>${m.home?.name || '—'}</span>
+                <span class="font-semibold">${fmtScore(m.home_score, m.away_score)}</span>
+                <span>${m.away?.name || '—'}</span>
+              </div>
+              <div class="text-xs text-gray-500 mt-1">${LabelStatus(m.status)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    // Final ranking if Final (and Small Final if exists) are finished
+    const finalMatch = (koAll||[]).find(m => /finale/i.test(String(m.round||'')) && !/petite/i.test(String(m.round||'')));
+    const smallFinal = (koAll||[]).find(m => /petite/i.test(String(m.round||'')));
+    if (finalMatch?.status === 'finished') {
+      const rank = [];
+      const fhs = toNum(finalMatch.home_score);
+      const fas = toNum(finalMatch.away_score);
+      if (fhs != null && fas != null) {
+        const finalWinner = fhs > fas ? { id: finalMatch.home_team_id, name: finalMatch.home?.name } : { id: finalMatch.away_team_id, name: finalMatch.away?.name };
+        const finalLoser = fhs > fas ? { id: finalMatch.away_team_id, name: finalMatch.away?.name } : { id: finalMatch.home_team_id, name: finalMatch.home?.name };
+        rank.push({ pos: 1, name: finalWinner.name });
+        rank.push({ pos: 2, name: finalLoser.name });
+        if (smallFinal?.status === 'finished') {
+          const shs = toNum(smallFinal.home_score);
+          const sas = toNum(smallFinal.away_score);
+          if (shs != null && sas != null) {
+            const smallWinner = shs > sas ? { name: smallFinal.home?.name } : { name: smallFinal.away?.name };
+            const smallLoser = shs > sas ? { name: smallFinal.away?.name } : { name: smallFinal.home?.name };
+            rank.push({ pos: 3, name: smallWinner.name });
+            rank.push({ pos: 4, name: smallLoser.name });
+          }
+        }
+      }
+      if (rank.length) {
+        const card = document.createElement('div');
+        card.className = 'mt-4 p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5';
+        card.innerHTML = `
+          <div class="font-semibold">Classement final</div>
+          <ol class="mt-2 space-y-1 text-sm">
+            ${rank.map(r => `<li><span class="font-semibold">${r.pos}.</span> ${r.name}</li>`).join('')}
+          </ol>
+        `;
+        bracketHost.parentElement?.insertBefore(card, bracketHost.nextSibling);
+      }
+    }
+  }
+
+function rankRound(label) {
+  const s = String(label||'').toLowerCase();
+  if (s.includes('1/8')) return 1;
+  if (s.includes('1/4')) return 2;
+  if (s.includes('demi')) return 3;
+  if (s.includes('petite')) return 4;
+  if (s.includes('finale')) return 5;
+  return 99;
+}
+
+function fmtScore(h,a) {
+  const hs = toNum(h); const as = toNum(a);
+  if (hs == null || as == null) return '—';
+  return `${hs} - ${as}`;
+}
   }
   // Pair 1 vs last, 2 vs last-1, ...
   const pairs = [];
@@ -155,7 +243,7 @@ async function renderStandings(tournamentId) {
   // If a knockout phase already exists but no Final yet, and the last KO round is fully finished with exactly 2 winners, offer CTA to generate the Final
   const { data: koAll } = await supabase
     .from('matches')
-    .select('id, round, status, home_team_id, away_team_id, home_score, away_score')
+    .select('id, round, status, home_team_id, away_team_id, home_score, away_score, home:home_team_id(name), away:away_team_id(name)')
     .eq('tournament_id', tournamentId)
     .is('group_id', null);
   const hasKO = Array.isArray(koAll) && koAll.length > 0;
@@ -176,20 +264,29 @@ async function renderStandings(tournamentId) {
         const two = rounds.find(([,c]) => c === 2);
         const targetRound = two ? two[0] : rounds.sort((a,b) => a[1]-b[1])[0][0];
         const targetMatches = finishedKo.filter(m => String(m.round||'') === targetRound);
-        // Compute winners from target round
+        // Compute winners and losers from target round
         const winners = [];
+        const losers = [];
         for (const m of targetMatches) {
           const hs = Number(m.home_score);
           const as = Number(m.away_score);
           if (!Number.isFinite(hs) || !Number.isFinite(as)) continue;
-          if (hs > as) winners.push({ id: m.home_team_id });
-          else if (as > hs) winners.push({ id: m.away_team_id });
+          if (hs > as) { winners.push({ id: m.home_team_id }); losers.push({ id: m.away_team_id }); }
+          else if (as > hs) { winners.push({ id: m.away_team_id }); losers.push({ id: m.home_team_id }); }
         }
         if (winners.length === 2) {
           const ctaHost = document.getElementById('ko-cta');
           if (ctaHost) {
             ctaHost.classList.remove('hidden');
-            ctaHost.innerHTML = `<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la finale</button>`;
+            // Build CTAs conditionally (finale and petite finale)
+            const parts = [];
+            parts.push(`<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la finale</button>`);
+            // Show Petite Finale CTA only if we have two losers and no existing petite finale
+            const hasPetiteFinale = (koAll||[]).some(m => String(m.round||'').toLowerCase().includes('petite'));
+            if (losers.length === 2 && !hasPetiteFinale) {
+              parts.push(`<button id=\"gen-small-final\" class=\"px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20\">Générer la petite finale</button>`);
+            }
+            ctaHost.innerHTML = parts.join('\n');
             document.getElementById('gen-final')?.addEventListener('click', async () => {
               const toInsert = [{
                 tournament_id: tournamentId,
@@ -201,6 +298,19 @@ async function renderStandings(tournamentId) {
               const { error } = await supabase.from('matches').insert(toInsert);
               if (error) { alert(error.message); return; }
               try { window.showToast && window.showToast('Finale générée', { type: 'success' }); } catch {}
+              location.hash = `#/app/t/${tournamentId}/matches`;
+            });
+            document.getElementById('gen-small-final')?.addEventListener('click', async () => {
+              const toInsert = [{
+                tournament_id: tournamentId,
+                round: 'Petite finale',
+                home_team_id: losers[0].id,
+                away_team_id: losers[1].id,
+                status: 'scheduled',
+              }];
+              const { error } = await supabase.from('matches').insert(toInsert);
+              if (error) { alert(error.message); return; }
+              try { window.showToast && window.showToast('Petite finale générée', { type: 'success' }); } catch {}
               location.hash = `#/app/t/${tournamentId}/matches`;
             });
           }
