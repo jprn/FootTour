@@ -60,7 +60,10 @@ async function renderMatches(tournamentId, { status = null } = {}) {
   if (error) { list.innerHTML = `<div class="text-red-600">${error.message}</div>`; return; }
   if (!data?.length) { list.innerHTML = '<div class="opacity-70">Aucun match.</div>'; return; }
 
-  list.innerHTML = data.map(m => MatchCard(m)).join('');
+  // Detect if a knockout phase exists (any match without group_id and round including 'finale')
+  const hasKnockout = (data || []).some(m => !m.group_id);
+
+  list.innerHTML = data.map(m => MatchCard(m, { lockGroup: hasKnockout && !!m.group_id })).join('');
 
   // Event delegation for inline updates
   list.addEventListener('input', (e) => {
@@ -89,12 +92,30 @@ async function renderMatches(tournamentId, { status = null } = {}) {
       if (saveBtn) saveBtn.disabled = false;
       return;
     }
+
+    // Score increment/decrement
+    const incBtn = e.target.closest('[data-action="inc"]');
+    const decBtn = e.target.closest('[data-action="dec"]');
+    if (incBtn || decBtn) {
+      const side = (incBtn || decBtn).getAttribute('data-side'); // 'home' | 'away'
+      const input = row.querySelector(`[name="${side}_score"]`);
+      if (!input || input.disabled) return;
+      const cur = Number(input.value || '0');
+      const next = incBtn ? (cur + 1) : Math.max(0, cur - 1);
+      input.value = String(next);
+      row.setAttribute('data-dirty', '1');
+      const saveBtn = row.querySelector('[data-action="save"]');
+      if (saveBtn) saveBtn.disabled = false;
+      return;
+    }
   }, { once: false });
 }
 
-function MatchCard(m) {
+function MatchCard(m, { lockGroup = false } = {}) {
   const statusOptions = ['scheduled','live','finished'];
   const statusBadge = StatusBadge(m.status);
+  const disabled = lockGroup ? 'disabled' : '';
+  const lockNote = lockGroup ? '<div class="text-xs text-amber-600 mt-1">Verrouillé: la phase finale est lancée</div>' : '';
   return `
     <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5" data-match-id="${m.id}">
       <div class="flex items-center justify-between">
@@ -104,28 +125,33 @@ function MatchCard(m) {
       <div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div class="truncate font-medium">${m.home?.name || '—'}</div>
         <div class="flex items-center gap-2">
-          <input inputmode="numeric" name="home_score" value="${m.home_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <button type="button" data-action="dec" data-side="home" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>−</button>
+          <button type="button" data-action="inc" data-side="home" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>+</button>
+          <input ${disabled} inputmode="numeric" name="home_score" value="${m.home_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
           <span class="opacity-60">-</span>
-          <input inputmode="numeric" name="away_score" value="${m.away_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <input ${disabled} inputmode="numeric" name="away_score" value="${m.away_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <button type="button" data-action="dec" data-side="away" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>−</button>
+          <button type="button" data-action="inc" data-side="away" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>+</button>
         </div>
         <div class="truncate text-right font-medium">${m.away?.name || '—'}</div>
       </div>
       <div class="mt-3 flex items-center justify-between gap-2 text-sm">
         <div class="flex items-center gap-2">
           <label class="opacity-70">Statut</label>
-          <select name="status" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent">
+          <select name="status" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" ${disabled}>
             ${statusOptions.map(s => `<option value="${s}" ${m.status===s?'selected':''}>${LabelStatus(s)}</option>`).join('')}
           </select>
           <div class="flex items-center gap-1">
-            <button type="button" data-action="status" data-value="scheduled" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">⏳</button>
-            <button type="button" data-action="status" data-value="live" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">🔴</button>
-            <button type="button" data-action="status" data-value="finished" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">✅</button>
+            <button type="button" data-action="status" data-value="scheduled" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>⏳</button>
+            <button type="button" data-action="status" data-value="live" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>🔴</button>
+            <button type="button" data-action="status" data-value="finished" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>✅</button>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <button data-action="save" class="px-3 py-1.5 rounded-xl bg-primary text-white disabled:opacity-50" disabled>Enregistrer</button>
+          <button data-action="save" class="px-3 py-1.5 rounded-xl bg-primary text-white disabled:opacity-50" ${lockGroup ? 'disabled' : 'disabled'}>Enregistrer</button>
         </div>
       </div>
+      ${lockNote}
     </div>
   `;
 }

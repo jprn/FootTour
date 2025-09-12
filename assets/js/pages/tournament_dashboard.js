@@ -86,11 +86,16 @@ async function load(id) {
       });
       actions?.prepend(btn);
     } else {
-      const link = document.createElement('a');
-      link.href = `#/app/t/${id}/schedule`;
-      link.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
-      link.textContent = 'Planning';
-      actions?.prepend(link);
+      const planningLink = document.createElement('a');
+      planningLink.href = `#/app/t/${id}/schedule`;
+      planningLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      planningLink.textContent = 'Planning';
+      const standingsLink = document.createElement('a');
+      standingsLink.href = `#/app/t/${id}/standings`;
+      standingsLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+      standingsLink.textContent = 'Classement';
+      actions?.prepend(standingsLink);
+      actions?.prepend(planningLink);
     }
   }
   if (!groups?.length) {
@@ -103,7 +108,10 @@ async function load(id) {
   host.innerHTML = `
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold">Poules</h2>
-      <a href="#/app/t/${id}/schedule" class="text-sm underline">Ouvrir le planning</a>
+      <div class="flex items-center gap-3 text-sm">
+        <a href="#/app/t/${id}/schedule" class="underline">Ouvrir le planning</a>
+        <a href="#/app/t/${id}/standings" class="underline">Voir le classement</a>
+      </div>
     </div>
     <div class="mt-3 grid md:grid-cols-3 gap-4">
       ${groups.map(g => `

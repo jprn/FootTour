@@ -7,9 +7,8 @@ export default function SchedulePage({ id }) {
         <a href="#/app/t/${id}" class="text-sm text-gray-500">← Tableau de bord</a>
         <h1 class="text-2xl font-semibold mt-1">Planning</h1>
       </div>
-      <div class="flex gap-2 hidden">
-        <button id="gen-groups" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer poules</button>
-        <button id="gen-knockout" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Générer bracket</button>
+      <div class="flex gap-2">
+        <a href="#/app/t/${id}/standings" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Classement</a>
       </div>
     </div>
 

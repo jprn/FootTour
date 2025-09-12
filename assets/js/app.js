@@ -10,6 +10,7 @@ import BillingCheckoutPage, { onMountBillingCheckout } from './pages/billing_che
 import SubscriptionPage, { onMountSubscription } from './pages/subscription.js';
 import SchedulePage, { onMountSchedule } from './pages/schedule.js';
 import MatchesPage, { onMountMatches } from './pages/matches.js';
+import StandingsPage, { onMountStandings } from './pages/standings.js';
 
 // Helper to register on-mount callbacks per page
 function onMount(fn) {
@@ -78,6 +79,10 @@ addRoute('/app/t/:id/schedule', async ({ id }) => {
 addRoute('/app/t/:id/matches', async ({ id }) => {
   onMount(() => onMountMatches({ id }));
   return MatchesPage({ id });
+});
+addRoute('/app/t/:id/standings', async ({ id }) => {
+  onMount(() => onMountStandings({ id }));
+  return StandingsPage({ id });
 });
 
 // Auth UI and nav actions
