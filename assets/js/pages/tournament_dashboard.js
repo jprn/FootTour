@@ -64,6 +64,14 @@ async function load(id) {
   if (!host) return;
   const { data: groups } = await supabase.from('groups').select('id, name').eq('tournament_id', id).order('name', { ascending: true });
   const actions = document.getElementById('tt-actions');
+  // Always provide a link to the Matches page for score entry
+  if (actions) {
+    const matchesLink = document.createElement('a');
+    matchesLink.href = `#/app/t/${id}/matches`;
+    matchesLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+    matchesLink.textContent = 'Matchs';
+    actions.append(matchesLink);
+  }
   if (t.format === 'groups_knockout') {
     // If no groups, offer generation CTA; else show Planning CTA
     if (!groups?.length) {
