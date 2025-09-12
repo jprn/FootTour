@@ -211,20 +211,18 @@ async function renderStandings(tournamentId) {
     const hasFinal = (koAll||[]).some(m => String(m.round||'').toLowerCase().includes('finale') && !String(m.round||'').toLowerCase().includes('demi'));
     if (!hasFinal) {
       const finishedKo = (koAll||[]).filter(m => m.status === 'finished');
-      // Build per-round counts (exclude Final)
+      // On cible UNIQUEMENT le round avec exactement 2 matchs terminés (démis)
       const perRound = {};
       finishedKo.forEach(m => {
         const r = String(m.round||'');
-        if (r.toLowerCase().includes('finale') && !r.toLowerCase().includes('demi')) return;
+        if (r.toLowerCase().includes('finale') && !r.toLowerCase().includes('demi')) return; // exclure la vraie Finale
         perRound[r] = (perRound[r]||0) + 1;
       });
-      const rounds = Object.entries(perRound).filter(([,c]) => c > 0);
-      if (rounds.length) {
-        // choose the smallest round by match count (>1 preferred for semis). If multiple, pick the one with count == 2; else min count.
-        const two = rounds.find(([,c]) => c === 2);
-        const targetRound = two ? two[0] : rounds.sort((a,b) => a[1]-b[1])[0][0];
-        const targetMatches = finishedKo.filter(m => String(m.round||'') === targetRound);
-        // Compute winners and losers from target round
+      const semiEntry = Object.entries(perRound).find(([,c]) => c === 2);
+      if (semiEntry) {
+        const semiLabel = semiEntry[0];
+        const targetMatches = finishedKo.filter(m => String(m.round||'') === semiLabel);
+        // Gagner/perdre issus des demis
         const winners = [];
         const losers = [];
         for (const m of targetMatches) {
@@ -238,27 +236,19 @@ async function renderStandings(tournamentId) {
           const ctaHost = document.getElementById('ko-cta');
           if (ctaHost) {
             ctaHost.classList.remove('hidden');
-            // Politique demandée:
-            // 1) Après le premier tour KO terminé: afficher UNIQUEMENT "Générer la petite finale" (si pas encore créée)
-            // 2) Quand la petite finale est terminée: afficher UNIQUEMENT "Générer la finale"
             const hasPetiteFinale = (koAll||[]).some(m => /petite/i.test(String(m.round||'')));
             const petiteFinaleFinished = (koAll||[]).some(m => /petite/i.test(String(m.round||'')) && m.status === 'finished');
 
-            // Décider quel bouton afficher
+            // Étape 1: proposer seulement la petite finale (si pas encore créée)
+            // Étape 2: après petite finale terminée: proposer seulement la finale
             let html = '';
-            if (!hasPetiteFinale && losers.length === 2) {
-              // Étape 1: proposer la petite finale seulement
+            if (!hasPetiteFinale) {
               html = `<button id=\"gen-small-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la petite finale</button>`;
             } else if (petiteFinaleFinished) {
-              // Étape 2: petite finale terminée -> proposer la finale seulement (libellé demandé)
               html = `<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Lancer la phase finale</button>`;
-            } else {
-              // Sinon, ne rien proposer (ou afficher un bouton désactivé si souhaité)
-              html = '';
             }
             ctaHost.innerHTML = html;
 
-            // Bind actions selon le bouton visible
             document.getElementById('gen-small-final')?.addEventListener('click', async () => {
               const toInsert = [{
                 tournament_id: tournamentId,
