@@ -93,8 +93,9 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
 
   // Detect if a knockout phase exists (any match without group_id and round including 'finale')
   const hasKnockout = (data || []).some(m => !m.group_id);
-
-  list.innerHTML = data.map(m => MatchCard(m, { lockGroup: hasKnockout && !!m.group_id })).join('');
+  // If knockout exists, hide group matches (show only knockout matches)
+  const toRender = hasKnockout ? (data || []).filter(m => !m.group_id) : data;
+  list.innerHTML = toRender.map(m => MatchCard(m, { lockGroup: hasKnockout && !!m.group_id })).join('');
 
   // Event delegation for inline updates (auto-save)
   list.addEventListener('click', async (e) => {
@@ -111,6 +112,17 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
       const badgeHost = row.querySelector('[data-role="status-badge"]');
       if (badgeHost) {
         badgeHost.innerHTML = StatusBadge(next);
+      }
+      // Toggle score controls availability based on new status and lock
+      const lock = row.getAttribute('data-lock-group') === '1';
+      const shouldDisableScores = lock || next === 'finished';
+      const scoreInputs = row.querySelectorAll('[name="home_score"], [name="away_score"]');
+      const scoreBtns = row.querySelectorAll('[data-action="inc"], [data-action="dec"]');
+      scoreInputs.forEach(inp => inp.disabled = shouldDisableScores);
+      scoreBtns.forEach(btn => btn.toggleAttribute('disabled', shouldDisableScores));
+      // Also disable status buttons if finished
+      if (next === 'finished') {
+        row.querySelectorAll('[data-action="status"]').forEach(btn => btn.setAttribute('disabled', ''));
       }
       return;
     }
@@ -144,10 +156,12 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
 function MatchCard(m, { lockGroup = false } = {}) {
   const statusOptions = ['scheduled','live','finished'];
   const statusBadge = StatusBadge(m.status);
+  const isFinished = m.status === 'finished';
+  const disableScores = lockGroup || isFinished;
   const disabled = lockGroup ? 'disabled' : '';
   const lockNote = lockGroup ? '<div class="text-xs text-amber-600 mt-1">Verrouillé: la phase finale est lancée</div>' : '';
   return `
-    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5" data-match-id="${m.id}">
+    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5" data-match-id="${m.id}" data-lock-group="${lockGroup ? '1' : '0'}">
       <div class="flex items-center justify-between">
         <div class="text-sm text-gray-500">${m.round || (m.group_id ? 'Poule' : 'Match')}</div>
         <span data-role="status-badge">${statusBadge}</span>
@@ -155,13 +169,13 @@ function MatchCard(m, { lockGroup = false } = {}) {
       <div class="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div class="truncate font-medium">${m.home?.name || '—'}</div>
         <div class="flex items-center gap-2">
-          <button type="button" data-action="dec" data-side="home" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>−</button>
-          <button type="button" data-action="inc" data-side="home" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>+</button>
-          <input ${disabled} inputmode="numeric" name="home_score" value="${m.home_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <button type="button" data-action="dec" data-side="home" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disableScores ? 'disabled' : ''}>−</button>
+          <button type="button" data-action="inc" data-side="home" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disableScores ? 'disabled' : ''}>+</button>
+          <input ${disableScores ? 'disabled' : ''} inputmode="numeric" name="home_score" value="${m.home_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
           <span class="opacity-60">-</span>
-          <input ${disabled} inputmode="numeric" name="away_score" value="${m.away_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
-          <button type="button" data-action="dec" data-side="away" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>−</button>
-          <button type="button" data-action="inc" data-side="away" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>+</button>
+          <input ${disableScores ? 'disabled' : ''} inputmode="numeric" name="away_score" value="${m.away_score ?? ''}" class="w-14 text-center px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent" />
+          <button type="button" data-action="dec" data-side="away" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disableScores ? 'disabled' : ''}>−</button>
+          <button type="button" data-action="inc" data-side="away" class="w-8 h-8 grid place-items-center rounded-xl border border-gray-300 dark:border-white/20" ${disableScores ? 'disabled' : ''}>+</button>
         </div>
         <div class="truncate text-right font-medium">${m.away?.name || '—'}</div>
       </div>
@@ -169,9 +183,9 @@ function MatchCard(m, { lockGroup = false } = {}) {
         <div class="flex items-center gap-2">
           <span class="opacity-70">Statut</span>
           <div class="flex items-center gap-1">
-            <button type="button" data-action="status" data-value="scheduled" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>⏳</button>
-            <button type="button" data-action="status" data-value="live" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>🔴</button>
-            <button type="button" data-action="status" data-value="finished" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${disabled}>✅</button>
+            <button type="button" data-action="status" data-value="scheduled" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${(lockGroup || isFinished) ? 'disabled' : ''}>⏳</button>
+            <button type="button" data-action="status" data-value="live" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${(lockGroup || isFinished) ? 'disabled' : ''}>🔴</button>
+            <button type="button" data-action="status" data-value="finished" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20" ${(lockGroup || isFinished) ? 'disabled' : ''}>✅</button>
           </div>
         </div>
         <div class="flex items-center gap-2"></div>

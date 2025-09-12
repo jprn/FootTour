@@ -151,6 +151,63 @@ async function renderStandings(tournamentId) {
       `;
     }
   }
+
+  // If a knockout phase already exists but no Final yet, and the last KO round is fully finished with exactly 2 winners, offer CTA to generate the Final
+  const { data: koAll } = await supabase
+    .from('matches')
+    .select('id, round, status, home_team_id, away_team_id, home_score, away_score')
+    .eq('tournament_id', tournamentId)
+    .is('group_id', null);
+  const hasKO = Array.isArray(koAll) && koAll.length > 0;
+  if (hasKO) {
+    const hasFinal = (koAll||[]).some(m => String(m.round||'').toLowerCase().includes('finale') && !String(m.round||'').toLowerCase().includes('demi'));
+    if (!hasFinal) {
+      const finishedKo = (koAll||[]).filter(m => m.status === 'finished');
+      // Build per-round counts (exclude Final)
+      const perRound = {};
+      finishedKo.forEach(m => {
+        const r = String(m.round||'');
+        if (r.toLowerCase().includes('finale') && !r.toLowerCase().includes('demi')) return;
+        perRound[r] = (perRound[r]||0) + 1;
+      });
+      const rounds = Object.entries(perRound).filter(([,c]) => c > 0);
+      if (rounds.length) {
+        // choose the smallest round by match count (>1 preferred for semis). If multiple, pick the one with count == 2; else min count.
+        const two = rounds.find(([,c]) => c === 2);
+        const targetRound = two ? two[0] : rounds.sort((a,b) => a[1]-b[1])[0][0];
+        const targetMatches = finishedKo.filter(m => String(m.round||'') === targetRound);
+        // Compute winners from target round
+        const winners = [];
+        for (const m of targetMatches) {
+          const hs = Number(m.home_score);
+          const as = Number(m.away_score);
+          if (!Number.isFinite(hs) || !Number.isFinite(as)) continue;
+          if (hs > as) winners.push({ id: m.home_team_id });
+          else if (as > hs) winners.push({ id: m.away_team_id });
+        }
+        if (winners.length === 2) {
+          const ctaHost = document.getElementById('ko-cta');
+          if (ctaHost) {
+            ctaHost.classList.remove('hidden');
+            ctaHost.innerHTML = `<button id=\"gen-final\" class=\"px-3 py-2 rounded-2xl bg-primary text-white\">Générer la finale</button>`;
+            document.getElementById('gen-final')?.addEventListener('click', async () => {
+              const toInsert = [{
+                tournament_id: tournamentId,
+                round: 'Finale',
+                home_team_id: winners[0].id,
+                away_team_id: winners[1].id,
+                status: 'scheduled',
+              }];
+              const { error } = await supabase.from('matches').insert(toInsert);
+              if (error) { alert(error.message); return; }
+              try { window.showToast && window.showToast('Finale générée', { type: 'success' }); } catch {}
+              location.hash = `#/app/t/${tournamentId}/matches`;
+            });
+          }
+        }
+      }
+    }
+  }
 }
 
 function computeStandings(teams, matches, { PTS_W, PTS_D, PTS_L }) {
