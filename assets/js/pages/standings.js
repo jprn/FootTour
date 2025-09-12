@@ -162,7 +162,7 @@ async function renderStandings(tournamentId) {
     supabase.from('tournaments').select('format').eq('id', tournamentId).single(),
   ]);
 
-  if (!groups?.length) { host.innerHTML = '<div class="col-span-full opacity-70">Aucune poule.</div>'; return; }
+  if (!groups?.length) { host.innerHTML = ''; }
 
   const byGroupTeams = Object.fromEntries(groups.map(g => [g.id, []]));
   (teams||[]).forEach(tm => { if (byGroupTeams[tm.group_id]) byGroupTeams[tm.group_id].push(tm); });
@@ -301,15 +301,23 @@ async function renderStandings(tournamentId) {
         }
       }
     }
-    // Render bracket view cards for KO rounds
+    // Render bracket view cards for KO rounds in a dedicated section
     try {
+      // Remove previous section if any
+      document.getElementById('ko-standings')?.remove();
+      const section = document.createElement('section');
+      section.id = 'ko-standings';
+      section.className = 'mt-6 space-y-4';
+      host.parentElement?.insertBefore(section, host.nextSibling);
+
+      const title = document.createElement('h2');
+      title.className = 'text-xl font-semibold';
+      title.textContent = 'Phase finale';
+      section.appendChild(title);
+
       const bracketHost = document.createElement('div');
       bracketHost.className = 'space-y-4';
-      const title = document.createElement('h2');
-      title.className = 'text-xl font-semibold mt-6';
-      title.textContent = 'Phase finale';
-      host.parentElement?.insertBefore(title, host.nextSibling);
-      host.parentElement?.insertBefore(bracketHost, title.nextSibling);
+      section.appendChild(bracketHost);
 
       const roundsMap = {};
       (koAll||[]).forEach(m => {
@@ -323,7 +331,7 @@ async function renderStandings(tournamentId) {
           <div class="font-semibold">${r}</div>
           <div class="mt-2 grid md:grid-cols-2 gap-3">
             ${(roundsMap[r]||[]).map(m => `
-              <div class="text-sm p-2 rounded-xl border ${m.status==='finished' ? 'border-red-300 bg-red-50/60 dark:border-red-500/60 dark:bg-red-900/10' : 'border-gray-200/80 dark:border-white/10'}">
+              <div class="text-sm p-2 rounded-xl border ${m.status==='finished' ? 'border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-900/20' : 'border-gray-200/80 dark:border-white/10'}">
                 <div class="flex items-center justify-between">
                   <span>${m.home?.name || '—'}</span>
                   <span class="font-semibold">${fmtScore(m.home_score, m.away_score)}</span>
@@ -337,7 +345,7 @@ async function renderStandings(tournamentId) {
       `).join('');
 
       // Final ranking if Final (and Small Final if exists) are finished
-      const finalMatch = (koAll||[]).find(m => /finale/i.test(String(m.round||'')) && !/petite/i.test(String(m.round||'')));
+      const finalMatch = (koAll||[]).find(m => isTrueFinal(String(m.round||'')));
       const smallFinal = (koAll||[]).find(m => /petite/i.test(String(m.round||'')));
       if (finalMatch?.status === 'finished') {
         const rank = [];
@@ -407,7 +415,7 @@ async function renderStandings(tournamentId) {
               </div>
             </div>
           `;
-          bracketHost.parentElement?.insertBefore(card, bracketHost.nextSibling);
+          section.appendChild(card);
 
           // Confetti one-shot
           try {
