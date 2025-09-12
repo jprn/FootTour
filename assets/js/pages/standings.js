@@ -77,6 +77,23 @@ function computeRoundLabel(n) {
 }
 
 async function generateKnockoutFromStandings(tournamentId, groups, perGroupTables, kPerGroup = 2) {
+  // Guard: if Petite finale or Finale already exists, do not allow generating KO again
+  try {
+    const { data: existingKo } = await supabase
+      .from('matches')
+      .select('id, round')
+      .eq('tournament_id', tournamentId)
+      .is('group_id', null);
+    const hasBlocking = (existingKo||[]).some(m => {
+      const r = String(m.round||'').toLowerCase();
+      return r.includes('petite') || (r.includes('finale') && !r.includes('demi'));
+    });
+    if (hasBlocking) {
+      alert('Phase finale déjà engagée (Petite finale ou Finale existe). Régénération interdite.');
+      return;
+    }
+  } catch {}
+
   // Collect top K teams per group
   const qualifiersPerGroup = groups.map(g => (perGroupTables[g.id] || []).slice(0, kPerGroup));
   const total = qualifiersPerGroup.reduce((acc, arr) => acc + arr.length, 0);
@@ -208,7 +225,10 @@ async function renderStandings(tournamentId) {
     .is('group_id', null);
   const hasKO = Array.isArray(koAll) && koAll.length > 0;
   if (hasKO) {
-    const hasFinal = (koAll||[]).some(m => String(m.round||'').toLowerCase().includes('finale') && !String(m.round||'').toLowerCase().includes('demi'));
+    const hasFinal = (koAll||[]).some(m => {
+      const r = String(m.round||'').toLowerCase();
+      return r.includes('finale') && !r.includes('demi') && !r.includes('petite');
+    });
     if (!hasFinal) {
       const finishedKo = (koAll||[]).filter(m => m.status === 'finished');
       // On cible UNIQUEMENT le round avec exactement 2 matchs terminés (démis)
