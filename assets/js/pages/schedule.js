@@ -204,7 +204,8 @@ async function generateGroupRoundRobin(tournamentId) {
       onAction: () => scrollToMatches(),
     });
   } catch {}
-  loadMatches(tournamentId);
+  await renderGroups(tournamentId);
+  await renderMatchesByGroup(tournamentId);
 }
 
 async function generateKnockout(tournamentId) {
@@ -239,5 +240,34 @@ async function generateKnockout(tournamentId) {
       onAction: () => scrollToMatches(),
     });
   } catch {}
-  loadMatches(tournamentId);
+  await renderMatchesByGroup(tournamentId);
+}
+
+// Render groups summary block at the top of the Planning page
+async function renderGroups(tournamentId) {
+  const host = document.getElementById('groups-summary');
+  if (!host) return;
+  host.innerHTML = '';
+  const { data: groups, error: gErr } = await supabase
+    .from('groups')
+    .select('id, name')
+    .eq('tournament_id', tournamentId)
+    .order('name', { ascending: true });
+  if (gErr) { host.innerHTML = `<div class="text-red-600">${gErr.message}</div>`; return; }
+  if (!groups?.length) { host.innerHTML = ''; return; }
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('id, name, group_id')
+    .eq('tournament_id', tournamentId)
+    .order('name', { ascending: true });
+  const byGroup = Object.fromEntries((groups||[]).map(g => [g.id, []]));
+  (teams||[]).forEach(tm => { if (byGroup[tm.group_id]) byGroup[tm.group_id].push(tm); });
+  host.innerHTML = groups.map(g => `
+    <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-white/10 bg-white/60 dark:bg-white/5">
+      <div class="font-semibold">Poule ${g.name}</div>
+      <ul class="mt-2 space-y-1 text-sm">
+        ${(byGroup[g.id]||[]).map(tm => `<li>• ${tm.name}</li>`).join('') || '<li class="opacity-70">(aucune équipe)</li>'}
+      </ul>
+    </div>
+  `).join('');
 }
