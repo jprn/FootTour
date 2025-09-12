@@ -18,6 +18,11 @@ export default function MatchesPage({ id }) {
         <button data-filter="scheduled" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">À venir</button>
         <button data-filter="live" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">En direct</button>
         <button data-filter="finished" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20">Terminés</button>
+        <span class="mx-2 opacity-50">|</span>
+        <label for="team-filter" class="opacity-70">Équipe</label>
+        <select id="team-filter" class="px-2 py-1 rounded-xl border border-gray-300 dark:border-white/20 bg-transparent">
+          <option value="">Toutes</option>
+        </select>
       </div>
 
       <div id="matches-list" class="grid md:grid-cols-2 gap-4"></div>
@@ -31,21 +36,45 @@ export function onMountMatches({ id }) {
 
 async function init(tournamentId) {
   setupFilterHandlers(tournamentId);
+  await populateTeams(tournamentId);
   await renderMatches(tournamentId);
 }
 
 function setupFilterHandlers(tournamentId) {
   const wrap = document.getElementById('matches-filters');
   if (!wrap) return;
+  // Keep current filters state
+  let currentStatus = null;
+  let currentTeamId = '';
   wrap.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-filter]');
     if (!btn) return;
     const value = btn.getAttribute('data-filter');
-    await renderMatches(tournamentId, { status: value === 'all' ? null : value });
+    currentStatus = (value === 'all') ? null : value;
+    currentTeamId = document.getElementById('team-filter')?.value || '';
+    await renderMatches(tournamentId, { status: currentStatus, teamId: currentTeamId || null });
   }, { once: false });
+
+  document.getElementById('team-filter')?.addEventListener('change', async (e) => {
+    currentTeamId = e.target.value || '';
+    await renderMatches(tournamentId, { status: currentStatus, teamId: currentTeamId || null });
+  });
 }
 
-async function renderMatches(tournamentId, { status = null } = {}) {
+async function populateTeams(tournamentId) {
+  const sel = document.getElementById('team-filter');
+  if (!sel) return;
+  const { data, error } = await supabase
+    .from('teams')
+    .select('id, name')
+    .eq('tournament_id', tournamentId)
+    .order('name', { ascending: true });
+  if (error) return;
+  sel.innerHTML = '<option value="">Toutes</option>' +
+    (data || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+async function renderMatches(tournamentId, { status = null, teamId = null } = {}) {
   const list = document.getElementById('matches-list');
   list.innerHTML = '<div class="col-span-full text-sm opacity-70">Chargement…</div>';
 
@@ -55,6 +84,7 @@ async function renderMatches(tournamentId, { status = null } = {}) {
     .eq('tournament_id', tournamentId)
     .order('start_time', { ascending: true, nullsFirst: true });
   if (status) query = query.eq('status', status);
+  if (teamId) query = query.or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`);
 
   const { data, error } = await query;
   if (error) { list.innerHTML = `<div class="text-red-600">${error.message}</div>`; return; }

@@ -72,7 +72,17 @@ async function generateKnockoutFromStandings(tournamentId, groups, perGroupTable
 }
 
 export function onMountStandings({ id }) {
+  // Initial render
   renderStandings(id);
+  // Poll every 4s for live updates
+  const intervalId = setInterval(() => renderStandings(id), 4000);
+  // Cleanup when navigating away from this standings page
+  const cleanup = () => { clearInterval(intervalId); window.removeEventListener('hashchange', onHashChange); };
+  const onHashChange = () => {
+    const expected = `#/app/t/${id}/standings`;
+    if (location.hash !== expected) cleanup();
+  };
+  window.addEventListener('hashchange', onHashChange);
 }
 
 async function renderStandings(tournamentId) {
@@ -91,7 +101,8 @@ async function renderStandings(tournamentId) {
     supabase
       .from('matches')
       .select('id, group_id, status, home_team_id, away_team_id, home_score, away_score')
-      .eq('tournament_id', tournamentId),
+      .eq('tournament_id', tournamentId)
+      .in('status', ['live','finished']),
     supabase.from('tournaments').select('format').eq('id', tournamentId).single(),
   ]);
 
