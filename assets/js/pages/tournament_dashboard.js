@@ -70,11 +70,16 @@ async function load(id) {
     matchesLink.href = `#/app/t/${id}/matches`;
     matchesLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
     matchesLink.textContent = 'Matchs';
+    // If poules are not generated for a groups-based tournament, disable the Matches button
+    if (t.format === 'groups_knockout' && !(groups && groups.length)) {
+      matchesLink.classList.add('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+      matchesLink.title = 'Créez d\'abord les poules pour accéder aux matchs';
+    }
     actions.append(matchesLink);
   }
   if (t.format === 'groups_knockout') {
     // If no groups, offer generation CTA; else show Planning CTA
-    if (!groups?.length) {
+    if (!groups?.length && (count ?? 0) > 0) {
       const btn = document.createElement('button');
       btn.id = 'tt-generate-groups';
       btn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
