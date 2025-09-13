@@ -31,6 +31,38 @@ export default function TournamentDashboardPage({ id }) {
   `;
 }
 
+// Supprime les matchs de poule, réinitialise l'appartenance des équipes, supprime les poules
+// puis recrée des poules aléatoires et le calendrier.
+async function regenerateGroupsAndCalendar(tournamentId) {
+  // Supprimer les matchs de poule existants
+  {
+    const { error: delMatchesErr } = await supabase
+      .from('matches')
+      .delete()
+      .eq('tournament_id', tournamentId)
+      .not('group_id', 'is', null);
+    if (delMatchesErr) { alert(delMatchesErr.message); return; }
+  }
+  // Réinitialiser les teams aux poules nulles
+  {
+    const { error: resetTeamsErr } = await supabase
+      .from('teams')
+      .update({ group_id: null })
+      .eq('tournament_id', tournamentId);
+    if (resetTeamsErr) { alert(resetTeamsErr.message); return; }
+  }
+  // Supprimer les poules existantes
+  {
+    const { error: delGroupsErr } = await supabase
+      .from('groups')
+      .delete()
+      .eq('tournament_id', tournamentId);
+    if (delGroupsErr) { alert(delGroupsErr.message); return; }
+  }
+  // Recréer des poules + calendrier
+  await createRandomGroupsAndGenerate(tournamentId);
+}
+
 export function onMountTournamentDashboard({ id }) {
   load(id);
   // If navigated just after creation, show contextual animation on dashboard header
@@ -79,17 +111,19 @@ async function load(id) {
   }
   if (t.format === 'groups_knockout') {
     // If no groups, offer generation CTA; else show Planning CTA
-    if (!groups?.length && (count ?? 0) > 0) {
-      const btn = document.createElement('button');
-      btn.id = 'tt-generate-groups';
-      btn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
-      btn.textContent = 'Générer les poules';
-      btn.addEventListener('click', async () => {
-        await createRandomGroupsAndGenerate(id);
-        try { window.showToast && window.showToast('Poules + calendrier générés', { type: 'success' }); } catch {}
-        location.hash = `#/app/t/${id}/schedule`;
-      });
-      actions?.prepend(btn);
+    if (!groups?.length) {
+      if ((count ?? 0) > 0) {
+        const btn = document.createElement('button');
+        btn.id = 'tt-generate-groups';
+        btn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
+        btn.textContent = 'Générer les poules';
+        btn.addEventListener('click', async () => {
+          await createRandomGroupsAndGenerate(id);
+          try { window.showToast && window.showToast('Poules + calendrier générés', { type: 'success' }); } catch {}
+          location.hash = `#/app/t/${id}/schedule`;
+        });
+        actions?.prepend(btn);
+      }
     } else {
       const planningLink = document.createElement('a');
       planningLink.href = `#/app/t/${id}/schedule`;
@@ -101,13 +135,13 @@ async function load(id) {
       standingsLink.textContent = 'Classement';
       const regenBtn = document.createElement('button');
       regenBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
-      regenBtn.textContent = 'Régénérer le calendrier';
-      regenBtn.title = 'Supprime les matchs de poule et recrée le calendrier';
+      regenBtn.textContent = 'Régénérer les poules';
+      regenBtn.title = 'Réattribue les équipes dans de nouvelles poules et régénère le calendrier (supprime poules et matchs de poule existants)';
       regenBtn.addEventListener('click', async () => {
-        const ok = confirm('Régénérer le calendrier des poules ? Les matchs de poule existants seront supprimés.');
+        const ok = confirm('Régénérer les poules ?\nCela supprimera les poules et matchs de poule existants, puis recréera une nouvelle répartition et un nouveau calendrier.');
         if (!ok) return;
-        await regenerateGroupCalendar(id);
-        try { window.showToast && window.showToast('Calendrier des poules régénéré', { type: 'success' }); } catch {}
+        await regenerateGroupsAndCalendar(id);
+        try { window.showToast && window.showToast('Poules et calendrier régénérés', { type: 'success' }); } catch {}
         location.hash = `#/app/t/${id}/schedule`;
       });
       actions?.prepend(standingsLink);
