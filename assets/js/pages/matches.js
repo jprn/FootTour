@@ -97,6 +97,18 @@ async function renderMatches(tournamentId, { status = null, teamId = null } = {}
   const toRender = hasKnockout ? (data || []).filter(m => !m.group_id) : data;
   list.innerHTML = toRender.map(m => MatchCard(m, { lockGroup: hasKnockout && !!m.group_id })).join('');
 
+  // If the Final is already finished, automatically navigate to standings (podium)
+  try {
+    const finalFinished = (data || []).some(m => !m.group_id && String(m.round||'').toLowerCase().includes('finale') && !String(m.round||'').toLowerCase().includes('petite') && m.status === 'finished');
+    if (finalFinished) {
+      // Avoid loop if already on standings
+      if (!location.hash.endsWith(`/standings`)) {
+        try { window.showToast && window.showToast('Finale terminée — affichage du podium', { type: 'success' }); } catch {}
+        setTimeout(() => { location.hash = `#/app/t/${tournamentId}/standings`; }, 250);
+      }
+    }
+  } catch {}
+
   // Event delegation for inline updates (auto-save)
   list.addEventListener('click', async (e) => {
     const row = e.target.closest('[data-match-id]');
