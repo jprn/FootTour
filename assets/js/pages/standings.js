@@ -427,6 +427,7 @@ async function renderStandings(tournamentId) {
       }
     } catch {}
   }
+}
 
 // Helpers for KO rendering
 function rankRound(label) {
