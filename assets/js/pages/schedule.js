@@ -5,7 +5,7 @@ export default function SchedulePage({ id }) {
     <div class="flex items-center justify-between">
       <div>
         <a href="#/app/t/${id}" class="text-sm text-gray-500">← Tableau de bord</a>
-        <h1 class="text-2xl font-semibold mt-1">Planning</h1>
+        <h1 class="text-2xl font-semibold mt-1">Programme des rencontres</h1>
       </div>
       <div id="schedule-actions" class="flex gap-2 items-center">
         <a href="#/app/t/${id}/matches" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Matchs</a>
@@ -325,7 +325,7 @@ async function generateKnockout(tournamentId) {
   await renderMatchesByGroup(tournamentId);
 }
 
-// Render groups summary block at the top of the Planning page
+// Render groups summary block at the top of the Programme des rencontres page
 async function renderGroups(tournamentId) {
   const host = document.getElementById('groups-summary');
   if (!host) return;

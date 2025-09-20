@@ -3,7 +3,7 @@ export default function LandingPage() {
   <section class="grid md:grid-cols-2 gap-8 items-center">
     <div>
       <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Gérez vos tournois multi-sport simplement</h1>
-      <p class="mt-3 text-gray-600 dark:text-gray-300">Créez un tournoi, ajoutez vos équipes, générez le planning et publiez une page publique. Football, basket, volley, handball, futsal.</p>
+      <p class="mt-3 text-gray-600 dark:text-gray-300">Créez un tournoi, ajoutez vos équipes, générez le programme des rencontres et publiez une page publique. Football, basket, volley, handball, futsal.</p>
       <div class="mt-6 flex gap-3">
         <a href="#/app/tournaments" class="px-4 py-2 rounded-2xl bg-primary text-white shadow-soft">Ouvrir l'app</a>
         <a href="#/auth/login" class="px-4 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Se connecter</a>
@@ -25,7 +25,7 @@ export default function LandingPage() {
         <ul class="mt-4 space-y-2 text-sm">
           <li>• 1 tournoi</li>
           <li>• Jusqu'à 8 équipes</li>
-          <li>• Planning de base</li>
+          <li>• Programme des rencontres de base</li>
           <li>• App mobile feuille de match</li>
         </ul>
         <a href="#/auth/signup" class="mt-6 inline-block w-full text-center px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Créer un compte</a>

@@ -9,7 +9,7 @@ export default function StandingsPage({ id }) {
       </div>
       <div class="flex gap-2 items-center">
         <div id="ko-cta" class="hidden"></div>
-        <a href="#/app/t/${id}/schedule" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Planning</a>
+        <a href="#/app/t/${id}/schedule" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">🗓️ Programme des rencontres</a>
         <a href="#/app/t/${id}/matches" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Matchs</a>
       </div>
     </div>
@@ -443,7 +443,6 @@ function fmtScore(h,a) {
   const hs = toNum(h); const as = toNum(a);
   if (hs == null || as == null) return '—';
   return `${hs} - ${as}`;
-}
 }
 
 function computeStandings(teams, matches, { PTS_W, PTS_D, PTS_L }) {

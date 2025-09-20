@@ -9,7 +9,7 @@ export default function MatchesPage({ id }) {
       </div>
       <div class="flex gap-2">
         <a href="#/app/t/${id}/standings" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Classement</a>
-        <a href="#/app/t/${id}/schedule" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">Planning</a>
+        <a href="#/app/t/${id}/schedule" class="px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20">🗓️ Programme des rencontres</a>
       </div>
     </div>
 

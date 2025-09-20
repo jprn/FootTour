@@ -77,7 +77,7 @@ export function onMountTournamentDashboard({ id }) {
           headerName.classList.remove('ring-2','ring-primary');
         }, 1000);
       }
-      try { window.showToast && window.showToast('Tournoi prêt. Configurez vos équipes et le planning.', { type: 'success' }); } catch {}
+      try { window.showToast && window.showToast('Tournoi prêt. Configurez vos équipes et le programme des rencontres.', { type: 'success' }); } catch {}
     }
   } catch {}
 }
@@ -128,7 +128,7 @@ async function load(id) {
       const planningLink = document.createElement('a');
       planningLink.href = `#/app/t/${id}/schedule`;
       planningLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
-      planningLink.textContent = 'Planning';
+      planningLink.textContent = '🗓️ Programme des rencontres';
       const standingsLink = document.createElement('a');
       standingsLink.href = `#/app/t/${id}/standings`;
       standingsLink.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
@@ -160,7 +160,7 @@ async function load(id) {
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold">Poules</h2>
       <div class="flex items-center gap-3 text-sm">
-        <a href="#/app/t/${id}/schedule" class="underline">Ouvrir le planning</a>
+        <a href="#/app/t/${id}/schedule" class="underline">🗓️ Ouvrir le programme des rencontres</a>
         <a href="#/app/t/${id}/standings" class="underline">Voir le classement</a>
       </div>
     </div>
