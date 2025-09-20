@@ -36,11 +36,11 @@ export default function TournamentDashboardPage({ id }) {
 async function regenerateGroupsAndCalendar(tournamentId) {
   // Supprimer les matchs de poule existants
   {
+    // Supprimer TOUS les matchs du tournoi (poules et phase finale)
     const { error: delMatchesErr } = await supabase
       .from('matches')
       .delete()
-      .eq('tournament_id', tournamentId)
-      .not('group_id', 'is', null);
+      .eq('tournament_id', tournamentId);
     if (delMatchesErr) { alert(delMatchesErr.message); return; }
   }
   // Réinitialiser les teams aux poules nulles
@@ -136,9 +136,9 @@ async function load(id) {
       const regenBtn = document.createElement('button');
       regenBtn.className = 'px-3 py-2 rounded-2xl border border-gray-300 dark:border-white/20';
       regenBtn.textContent = 'Régénérer les poules';
-      regenBtn.title = 'Réattribue les équipes dans de nouvelles poules et régénère le calendrier (supprime poules et matchs de poule existants)';
+      regenBtn.title = 'Réattribue les équipes dans de nouvelles poules et régénère le calendrier (supprime toutes les poules et TOUS les matchs du tournoi)';
       regenBtn.addEventListener('click', async () => {
-        const ok = confirm('Régénérer les poules ?\nCela supprimera les poules et matchs de poule existants, puis recréera une nouvelle répartition et un nouveau calendrier.');
+        const ok = confirm('Régénérer les poules ?\nATTENTION: cela va supprimer TOUTES les poules et TOUS les matchs du tournoi (poules et phase finale), puis recréer une nouvelle répartition et un nouveau calendrier.');
         if (!ok) return;
         await regenerateGroupsAndCalendar(id);
         try { window.showToast && window.showToast('Poules et calendrier régénérés', { type: 'success' }); } catch {}
